@@ -2,3 +2,4 @@ test_local
 sdk.cfg
 *.bak-*
 lib/SampleService/SampleServiceServer.py
+.vscode/settings.json
