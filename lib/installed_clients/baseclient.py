@@ -15,8 +15,15 @@ import traceback as _traceback
 from requests.exceptions import ConnectionError
 from urllib3.exceptions import ProtocolError
 
-from configparser import ConfigParser as _ConfigParser
-from urllib.parse import urlparse as _urlparse
+try:
+    from configparser import ConfigParser as _ConfigParser  # py 3
+except ImportError:
+    from ConfigParser import ConfigParser as _ConfigParser  # py 2
+
+try:
+    from urllib.parse import urlparse as _urlparse  # py3
+except ImportError:
+    from urlparse import urlparse as _urlparse  # py2
 import time
 
 _CT = 'content-type'
