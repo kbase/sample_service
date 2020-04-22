@@ -338,8 +338,16 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
         raise ValueError('ancestor_term is a required paramter')
     if type(ancestor_term) != str:
         raise ValueError('ancestor_term must be a string')
+
+    def _get_ontology_ancestors(ontology, val):
+        oac=OntologyAPI('https://ci.kbase.us/services/service_wizard', service_ver='dev')
+        try:
+            ret=oac.get_ancestors({"id": val, "ns": ontology})
+            print(ret)
+            return list(map(lambda x: x["term"]["id"], ret[0]["results"]))
+        except:
+            return []
     
-    get_ontology_ancestors=_get_ontology_ancestors
     def ontology_has_ancestor_val(key: str, d1: Dict[str, PrimitiveType]) -> Optional[str]:
         for k, v in d1.items():
             ancestors=get_ontology_ancestors(ontology, v)
@@ -348,11 +356,4 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
         return None
     return ontology_has_ancestor_val
 
-def _get_ontology_ancestors(ontology, val):
-    oac=OntologyAPI('https://ci.kbase.us/services/service_wizard', service_ver='dev')
-    try:
-        ret=oac.get_ancestors({"id": val, "ns": ontology})
-        return list(map(lambda x: x["term"]["id"], ret[0]["results"]))
-    except:
-        return []
 
