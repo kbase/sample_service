@@ -344,7 +344,7 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
         try:
             ret=oac.get_ancestors({"id": val, "ns": ontology})
             print(ret)
-            return list(map(lambda x: x["term"]["id"], ret[0]["results"]))
+            return list(map(lambda x: x["term"]["id"], ret["results"]))
         except:
             return []
     
