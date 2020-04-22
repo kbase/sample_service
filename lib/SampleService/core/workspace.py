@@ -173,8 +173,7 @@ class WS:
         :param perm: The requested permission
         :param workspace_id: The ID of the workspace.
         :param upa: a workspace service UPA.
-        :raises IllegalParameterError: if the parameters are incorrect, such as a missing user
-            or improper UPA.
+        :raises IllegalParameterError: if the parameters are incorrect, such as an improper UPA.
         :raises UnauthorizedError: if the user doesn't have the requested permission.
         :raises NoSuchWorkspaceDataError: if the workspace or UPA doesn't exist.
         '''
@@ -224,7 +223,6 @@ class WS:
 
         :param user: The username of the user whose workspaces will be returned.
         :returns: A list of workspace IDs.
-        :raises IllegalParameterError: if the parameters are incorrect, such as a missing user.
         :raises NoSuchUserError: if the user does not exist.
         '''
         # May also want write / admin / no public ws
