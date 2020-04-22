@@ -343,7 +343,6 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
         oac=OntologyAPI('https://ci.kbase.us/services/service_wizard', service_ver='dev')
         try:
             ret=oac.get_ancestors({"id": val, "ns": ontology})
-            print(ret)
             return list(map(lambda x: x["term"]["id"], ret["results"]))
         except:
             return []
@@ -355,5 +354,4 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
                 return f'Metadata value at key {k} does not have {ontology} ancestor term {ancestor_term}'
         return None
     return ontology_has_ancestor_val
-
 
