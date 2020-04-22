@@ -20,6 +20,7 @@ from pint import DimensionalityError as _DimensionalityError
 from pint import UndefinedUnitError as _UndefinedUnitError
 from pint import DefinitionSyntaxError as _DefinitionSyntaxError
 from SampleService.core.core_types import PrimitiveType
+from installed_clients.OntologyAPIClient import OntologyAPI
 
 
 def _check_unknown_keys(d, expected):
@@ -312,4 +313,45 @@ def _get_range(d):
 def _is_num(name, val):
     if val is not None and type(val) != float and type(val) != int:
         raise ValueError(f'Value for {name} parameter is not a number')
-    return val
+
+def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, PrimitiveType]], Optional[str]]:
+    '''
+    Build a validation callable that checks that value has valid ontology ancestor term provided
+
+    The 'ontology' parameter is required and must be a string. It is the ontolgy name.
+
+    The 'ancestor_term' parameter is required and must be a string. It is the ancestor name.
+
+    :param d: the configuration map for the callable.
+    :returns: a callable that validates metadata maps.
+    '''
+    _check_unknown_keys(d, {'ontology', 'ancestor_term'})
+
+    ontology = d.get('ontology')
+    if not ontology:
+        raise ValueError('ontology is a required paramter')
+    if type(ontology) != str:
+        raise ValueError('ontology must be a string')
+
+    ancestor_term = d.get('ancestor_term')
+    if not ancestor_term:
+        raise ValueError('ancestor_term is a required paramter')
+    if type(ancestor_term) != str:
+        raise ValueError('ancestor_term must be a string')
+
+    def ontology_has_ancestor_val(key: str, d1: Dict[str, PrimitiveType]) -> Optional[str]:
+        for k, v in d1.items():
+            ancestors=_get_ontology_ancestors(ontology, v)
+            if v is not None and ancestor_term not in ancestors:
+                return f'Metadata value at key {k} does not have {ontology} ancestor term {ancestor_term}'
+        return None
+    return ontology_has_ancestor_val
+
+def _get_ontology_ancestors(ontology, val):
+    oac=OntologyAPI('https://ci.kbase.us/services/service_wizard', service_ver='dev')
+    try:
+        ret=oac.get_ancestors({"id": val, "ns": ontology})
+        return list(map(lambda x: x["term"]["id"], ret[0]["results"]))
+    except:
+        return []
+

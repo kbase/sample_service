@@ -373,3 +373,33 @@ def _number_build_fail(cfg, expected):
 
 def _number_validate_fail(cfg, meta, expected):
     assert builtin.number(cfg)('key', meta) == expected
+
+def test_ontology_has_ancestor():
+    _ontology_has_ancestor_success({'ontology': 'envo_ontology', 'ancestor_term':'ENVO:00010483'}, {'Material': 'ENVO:00002041', 'ENVO:Material': 'ENVO:00002006'})
+
+def _ontology_has_ancestor_success(cfg, meta):
+    assert builtin.ontology_has_ancestor(cfg)('key', meta) is None
+
+def test_ontology_has_ancestor_build_fail():
+    _ontology_has_ancestor_build_fail(None, ValueError('d must be a dict'))
+    _ontology_has_ancestor_build_fail({'ontology': None}, ValueError('ontology is a required paramter'))
+    _ontology_has_ancestor_build_fail({'ontology': ['foo']}, ValueError('ontology must be a string'))
+    _ontology_has_ancestor_build_fail({'ontology': 'foo', 'ancestor_term': None}, ValueError('ancestor_term is a required paramter'))
+    _ontology_has_ancestor_build_fail({'ontology': 'foo', 'ancestor_term': ['foo']}, ValueError('ancestor_term must be a string'))
+    _ontology_has_ancestor_build_fail({'ontology': 'foo', 'ancestor_term': 'bar', 'whee': 'whoo'}, ValueError('Unexpected configuration parameter: whee'))
+
+def _ontology_has_ancestor_build_fail(cfg, expected):
+    with raises(Exception) as got:
+        builtin.ontology_has_ancestor(cfg)
+    assert_exception_correct(got.value, expected)
+
+def test_ontology_has_ancestor_validate_fail():
+    _ontology_has_ancestor_validate_fail(
+        {'ontology': 'envo_ontology', 'ancestor_term':'ENVO:00010483'}, {'a': 'foo'}, 'Metadata value at key a does not have envo_ontology ancestor term ENVO:00010483')
+    _ontology_has_ancestor_validate_fail(
+        {'ontology': 'envo_ontology', 'ancestor_term':'bar'}, {'a': 'ENVO:00002041'}, 'Metadata value at key a does not have envo_ontology ancestor term bar')
+    _ontology_has_ancestor_validate_fail(
+        {'ontology': 'foo', 'ancestor_term':'ENVO:00010483'}, {'a': 'ENVO:00002041'}, 'Metadata value at key a does not have foo ancestor term ENVO:00010483')
+
+def _ontology_has_ancestor_validate_fail(cfg, meta, expected):
+    assert builtin.ontology_has_ancestor(cfg)('key', meta) == expected
