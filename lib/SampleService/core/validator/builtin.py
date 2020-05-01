@@ -314,6 +314,7 @@ def _get_range(d):
 def _is_num(name, val):
     if val is not None and type(val) != float and type(val) != int:
         raise ValueError(f'Value for {name} parameter is not a number')
+    return val
 
 def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, PrimitiveType]], Optional[str]]:
     '''
