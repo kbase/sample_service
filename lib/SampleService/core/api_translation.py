@@ -8,18 +8,52 @@ from typing import Dict, Any, Optional, Tuple, List, Callable, cast as _cast
 import datetime
 
 from SampleService.core.core_types import PrimitiveType
-from SampleService.core.sample import Sample, SampleNode as _SampleNode, SavedSample
-from SampleService.core.sample import SubSampleType as _SubSampleType
+from SampleService.core.sample import (
+    Sample,
+    SampleNode as _SampleNode,
+    SavedSample,
+    SampleAddress as _SampleAddress,
+    SampleNodeAddress,
+    SubSampleType as _SubSampleType
+)
 from SampleService.core.acls import SampleACLOwnerless, SampleACL, AdminPermission
 from SampleService.core.user_lookup import KBaseUserLookup
-from SampleService.core.arg_checkers import not_falsy as _not_falsy
-from SampleService.core.errors import IllegalParameterError as _IllegalParameterError
-from SampleService.core.errors import MissingParameterError as _MissingParameterError
-from SampleService.core.errors import UnauthorizedError as _UnauthorizedError
-from SampleService.core.user import UserID as _UserID
+from SampleService.core.arg_checkers import (
+    not_falsy as _not_falsy,
+    not_falsy_in_iterable as _not_falsy_in_iterable,
+    check_string as _check_string
+)
+from SampleService.core.data_link import DataLink
+from SampleService.core.errors import (
+    IllegalParameterError as _IllegalParameterError,
+    MissingParameterError as _MissingParameterError,
+    UnauthorizedError as _UnauthorizedError,
+    NoSuchUserError as _NoSuchUserError
+)
+from SampleService.core.user import UserID
+from SampleService.core.workspace import DataUnitID, UPA
 
 ID = 'id'
 ''' The ID of a sample. '''
+
+
+def get_user_from_object(params: Dict[str, Any], key) -> Optional[UserID]:
+    '''
+    Get a user ID from a key in an object.
+
+    :param params: the dict containing the user.
+    :param key: the key in the dict where the value is the username.
+    :returns: the user ID or None if the user is not present.
+    :raises IllegalParameterError: if the user if invalid.
+    '''
+    _check_params(params)
+    u = params.get(_cast(str, _check_string(key, 'key')))
+    if u is None:
+        return None
+    if type(u) is not str:
+        raise _IllegalParameterError(f'{key} must be a string if present')
+    else:
+        return UserID(u)
 
 
 def get_id_from_object(obj: Dict[str, Any], required=False) -> Optional[UUID]:
@@ -55,6 +89,25 @@ def datetime_to_epochmilliseconds(d: datetime.datetime) -> int:
     :returns: The date in epoch milliseconds.
     '''
     return round(_not_falsy(d, 'd').timestamp() * 1000)
+
+
+def get_datetime_from_epochmilliseconds_in_object(
+        params: Dict[str, Any], key: str) -> Optional[datetime.datetime]:
+    '''
+    Get a non-naive datetime from a field in an object where the value is epoch milliseconds.
+
+    :param params: the object.
+    :param key: the key in the object for which the value is an epoch millisecond timestamp.
+    :returns: the datatime or None if none was provided.
+    :raises IllegalParameterError: if the timestamp is illegal.
+    '''
+    t = _check_params(params).get(key)
+    if t is None:
+        return None
+    if type(t) != int:
+        raise _IllegalParameterError(
+            f"key '{key}' value of '{t}' is not a valid epoch millisecond timestamp")
+    return datetime.datetime.fromtimestamp(t / 1000, tz=datetime.timezone.utc)
 
 
 def create_sample_params(params: Dict[str, Any]) -> Tuple[Sample, Optional[UUID], Optional[int]]:
@@ -137,36 +190,43 @@ def _check_meta(m, index, name) -> Optional[Dict[str, Dict[str, PrimitiveType]]]
 def _check_params(params):
     if params is None:
         raise ValueError('params cannot be None')
+    return params
 
 
-def get_version_from_object(params: Dict[str, Any]) -> Optional[int]:
+def get_version_from_object(params: Dict[str, Any], required: bool = False) -> Optional[int]:
     '''
     Given a dict, get a sample version from the dict if it exists, using the key 'version'.
 
-    :param params: The unmarshalled JSON recieved from the API as part of the API call.
+    :param params: the unmarshalled JSON recieved from the API as part of the API call.
+    :param required: if True, throw and exception if the version is not supplied.
     :returns: the version or None if no version was provided.
+    :raises MissingParameterError: if the version is required and not present.
     :raises IllegalParameterError: if the version is not an integer or < 1.
     '''
     _check_params(params)
     ver = params.get('version')
+    if ver is None and required:
+        raise _MissingParameterError('version')
     if ver is not None and (type(ver) != int or ver < 1):
         raise _IllegalParameterError(f'Illegal version argument: {ver}')
     return ver
 
 
-def get_sample_address_from_object(params: Dict[str, Any]) -> Tuple[UUID, Optional[int]]:
+def get_sample_address_from_object(
+            params: Dict[str, Any], version_required: bool = False) -> Tuple[UUID, Optional[int]]:
     '''
     Given a dict, get a sample ID and version from the dict. The sample ID is required but
     the version is not. The keys 'id' and 'version' are used.
 
-    :param params: The unmarshalled JSON recieved from the API as part of the API call.
-    :returns: A tuple containing the ID and the version or None if no version was provided.
-    :raises MissingParameterError: If the ID is missing.
+    :param params: the unmarshalled JSON recieved from the API as part of the API call.
+    :param version_required: require the version as well as the ID.
+    :returns: a tuple containing the ID and the version or None if no version was provided.
+    :raises MissingParameterError: if the ID is missing or the version is required and not present.
     :raises IllegalParameterError: if the ID is malformed or if the version is not an
         integer or < 1.
     '''
     return (_cast(UUID, get_id_from_object(params, required=True)),
-            get_version_from_object(params))
+            get_version_from_object(params, version_required))
 
 
 def sample_to_dict(sample: SavedSample) -> Dict[str, Any]:
@@ -183,7 +243,7 @@ def sample_to_dict(sample: SavedSample) -> Dict[str, Any]:
               'meta_user': _unfreeze_meta(n.user_metadata)
               }
              for n in _not_falsy(sample, 'sample').nodes]
-    return {'id': str(sample.id),
+    return {ID: str(sample.id),
             'user': sample.user.id,
             'name': sample.name,
             'node_tree': nodes,
@@ -241,7 +301,7 @@ def _get_acl(acls, type_):
         for i, item, in enumerate(acl):
             if not type(item) == str:
                 raise _IllegalParameterError(f'Index {i} of {type_} ACL does not contain a string')
-            ret.append(_UserID(item))
+            ret.append(UserID(item))
     return ret
 
 
@@ -251,7 +311,7 @@ def check_admin(
         perm: AdminPermission,
         method: str,
         log_fn: Callable[[str], None],
-        as_user: str = None,
+        as_user: UserID = None,
         skip_check: bool = False) -> bool:
     '''
     Check whether a user has admin privileges.
@@ -267,7 +327,9 @@ def check_admin(
     :param skip_check: Skip the administration permission check and return false.
     :returns: true if the user has the required administration permission, false if skip_check
         is true.
-    :throws UnauthorizedError: if the user does not have the permission required.
+    :raises UnauthorizedError: if the user does not have the permission required.
+    :raises InvalidUserError: if any of the user names are invalid.
+    :raises UnauthorizedError: if any of the users names are valid but do not exist in the system.
     '''
     if skip_check:
         return False
@@ -284,6 +346,8 @@ def check_admin(
                f'privileges to run method {method}')
         log_fn(err)
         raise _UnauthorizedError(err)
+    if as_user and user_lookup.invalid_users([as_user]):  # returns list of bad users
+        raise _NoSuchUserError(as_user.id)
     log_fn(f'User {user} is running method {method} with administration permission {p.name}' +
            (f' as user {as_user}' if as_user else ''))
     return True
@@ -299,6 +363,7 @@ def get_static_key_metadata_params(params: Dict[str, Any]) -> Tuple[List[str], O
         indicates that prefix keys should be interrogated but only exact matches should be
         considered, and True indicates that prefix keys should be interrogated but prefix matches
         should be included in the results.
+    :raises IllegalParameterError: if any of the arguments are illegal.
     '''
     _check_params(params)
     keys = params.get('keys')
@@ -318,3 +383,98 @@ def get_static_key_metadata_params(params: Dict[str, Any]) -> Tuple[List[str], O
     else:
         raise _IllegalParameterError(f'Unexpected value for prefix: {prefix}')
     return _cast(List[str], keys), pre
+
+
+def create_data_link_params(params: Dict[str, Any]) -> Tuple[DataUnitID, SampleNodeAddress, bool]:
+    '''
+    Given a dict, extract the parameters to create parameters for creating a data link.
+
+    Expected keys:
+    id - sample id
+    version - sample version
+    node - sample node
+    upa - workspace object UPA
+    dataid - ID of the data within the workspace object
+    update - whether the link should be updated
+
+    :param params: the parameters.
+    :returns: a tuple consisting of:
+        1) The data unit ID that is the target of the link,
+        2) The sample node that is the target of the link,
+        3) A boolean that indicates whether the link should be updated if it already exists.
+    :raises MissingParameterError: if any of the required arguments are missing.
+    :raises IllegalParameterError: if any of the arguments are illegal.
+    '''
+    _check_params(params)
+    sna = SampleNodeAddress(
+        _SampleAddress(
+            _cast(UUID, get_id_from_object(params, required=True)),
+            _cast(int, get_version_from_object(params, required=True))),
+        _cast(str, _check_string_int(params, 'node', True))
+    )
+    duid = get_data_unit_id_from_object(params)
+    return (duid, sna, bool(params.get('update')))
+
+
+def get_data_unit_id_from_object(params: Dict[str, Any]) -> DataUnitID:
+    '''
+    Get a Data Unit ID from a parameter object. Expects an UPA in the key 'upa' and a data unit
+    ID, if any, in the key dataID.
+
+    :param params: the parameters.
+    :returns: the DUID.
+    :raises MissingParameterError: if the UPA is missing.
+    :raises IllegalParameterError: if the UPA or data ID are illegal.
+    '''
+    _check_params(params)
+    return DataUnitID(get_upa_from_object(params), _check_string_int(params, 'dataid'))
+
+
+def get_upa_from_object(params: Dict[str, Any]) -> UPA:
+    '''
+    Get an UPA from a parameter object. Expects the UPA in the key 'upa'.
+
+    :param params: the parameters.
+    :returns: the UPA.
+    :raises MissingParameterError: if the UPA is missing.
+    :raises IllegalParameterError: if the UPA is illegal.
+    '''
+    _check_params(params)
+    return UPA(_cast(str, _check_string_int(params, 'upa', True)))
+
+
+def _check_string_int(params: Dict[str, Any], key: str, required=False) -> Optional[str]:
+    v = params.get(key)
+    if v is None:
+        if required:
+            raise _MissingParameterError(key)
+        else:
+            return None
+    if type(v) != str:
+        raise _IllegalParameterError(f'{key} key is not a string as required')
+    return _cast(str, v)
+
+
+def links_to_dicts(links: List[DataLink]) -> List[Dict[str, Any]]:
+    '''
+    Translate a list of link objects to a list of dicts suitable for tranlating to JSON.
+
+    :param links: the links.
+    :returns: the list of dicts.
+    '''
+    ret = []
+    for l in _not_falsy_in_iterable(links, 'links'):
+        ex = datetime_to_epochmilliseconds(l.expired) if l.expired else None
+        ret.append({
+            # don't provide link ID for now
+            'upa': str(l.duid.upa),
+            'dataid': l.duid.dataid,
+            'id': str(l.sample_node_address.sampleid),
+            'version': l.sample_node_address.version,
+            'node': l.sample_node_address.node,
+            'createdby': str(l.created_by),
+            'created': datetime_to_epochmilliseconds(l.created),
+            'expiredby': str(l.expired_by) if l.expired_by else None,
+            'expired': ex
+        })
+    return ret

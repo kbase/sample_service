@@ -14,10 +14,13 @@ from SampleService.core.acls import SampleAccessType as _SampleAccessType
 from SampleService.core.acls import SampleACL, SampleACLOwnerless
 from SampleService.core.core_types import PrimitiveType
 from SampleService.core.data_link import DataLink
-from SampleService.core.errors import UnauthorizedError as _UnauthorizedError
-from SampleService.core.errors import IllegalParameterError as _IllegalParameterError
-from SampleService.core.errors import MetadataValidationError as _MetadataValidationError
-from SampleService.core.errors import NoSuchUserError as _NoSuchUserError
+from SampleService.core.errors import (
+    UnauthorizedError as _UnauthorizedError,
+    IllegalParameterError as _IllegalParameterError,
+    MetadataValidationError as _MetadataValidationError,
+    NoSuchUserError as _NoSuchUserError,
+    NoSuchLinkError as _NoSuchLinkError
+)
 from SampleService.core.sample import Sample, SavedSample, SampleAddress, SampleNodeAddress
 from SampleService.core.user_lookup import KBaseUserLookup
 from SampleService.core import user_lookup as _user_lookup_mod
@@ -26,7 +29,7 @@ from SampleService.core.storage.arango_sample_storage import ArangoSampleStorage
 from SampleService.core.storage.errors import OwnerChangedError as _OwnerChangedError
 from SampleService.core.user import UserID
 from SampleService.core.workspace import WS, WorkspaceAccessType as _WorkspaceAccessType
-from SampleService.core.workspace import DataUnitID
+from SampleService.core.workspace import DataUnitID, UPA
 
 
 # TODO remove own acls.
@@ -90,6 +93,7 @@ class Samples:
         _not_falsy(sample, 'sample')
         _not_falsy(user, 'user')
         self._validate_metadata(sample)
+        # TODO ADMIN as_admin should allow saving a new version
         if id_:
             if prior_version is not None and prior_version < 1:
                 raise _IllegalParameterError('Prior version must be > 0')
@@ -207,7 +211,7 @@ class Samples:
         _not_falsy(user, 'user')
         _not_falsy(new_acls, 'new_acls')
         try:
-            bad_users = self._user_lookup.are_valid_users(
+            bad_users = self._user_lookup.invalid_users(
                 _cast(List[UserID], []) + list(new_acls.admin) +
                 list(new_acls.write) + list(new_acls.read))
             # let authentication errors propagate, not much to do
@@ -259,7 +263,8 @@ class Samples:
             user: UserID,
             duid: DataUnitID,
             sna: SampleNodeAddress,
-            update: bool = False):
+            update: bool = False,
+            as_admin: bool = False):
         '''
         Create a link from a data unit to a sample. The user must have admin access to the sample,
         since linking data grants permissions: once linked, if a user
@@ -275,8 +280,9 @@ class Samples:
         :param sna: the sample node to link to the data unit.
         :param update: True to expire any extant link if it does not link to the provided sample.
             If False and a link from the data unit already exists, link creation will fail.
-        :raises UnauthorizedError: if the user does not have read permission for the sample.
-        :raises IllegalParameterError: if the parameters are incorrect, such as an improper UPA.
+        :param as_admin: allow link creation to proceed if user does not have
+            appropriate permissions.
+        :raises UnauthorizedError: if the user does not have acceptable permissions.
         :raises NoSuchSampleError: if the sample does not exist.
         :raises NoSuchSampleVersionError: if the sample version does not exist.
         :raises NoSuchSampleNodeError: if the sample node does not exist.
@@ -286,15 +292,40 @@ class Samples:
             the workspace object version.
         :raises SampleStorageError: if the sample could not be retrieved.
         '''
-        # TODO ADMIN admin mode
         _not_falsy(user, 'user')
         _not_falsy(duid, 'duid')
-        self._check_perms(_not_falsy(sna, 'sna').sampleid, user, _SampleAccessType.ADMIN)
-        self._ws.has_permission(user, _WorkspaceAccessType.WRITE, upa=duid.upa)
+        self._check_perms(
+            _not_falsy(sna, 'sna').sampleid, user, _SampleAccessType.ADMIN, as_admin=as_admin)
+        wsperm = _WorkspaceAccessType.NONE if as_admin else _WorkspaceAccessType.WRITE
+        self._ws.has_permission(user, wsperm, upa=duid.upa)
         dl = DataLink(self._uuid_gen(), duid, sna, self._now(), user)
         self._storage.create_data_link(dl, update=update)
 
-    # TODO DATALINK expire link
+    def expire_data_link(self, user: UserID, duid: DataUnitID) -> None:
+        '''
+        Expire a data link, ensuring that it will not show up in link queries without an effective
+        timestamp in the past.
+        The user must have admin access to the sample and write access to the data. The data may
+        be deleted.
+
+        :param user: the user expiring the link.
+        :param duid: the data unit ID for the extant link.
+        :raises UnauthorizedError: if the user does not have acceptable permissions.
+        :raises NoSuchWorkspaceDataError: if the workspace doesn't exist.
+        :raises NoSuchLinkError: if there is no link from the data unit.
+        '''
+        # TODO ADMIN admin mode
+        _not_falsy(user, 'user')
+        _not_falsy(duid, 'duid')
+        # allow expiring links for deleted objects. It should be impossible to have a link
+        # for an object that has never existed.
+        # TODO DOCUMENT What about deleted workspaces? Links should be inaccessible as is
+        self._ws.has_permission(user, _WorkspaceAccessType.WRITE, workspace_id=duid.upa.wsid)
+        link = self._storage.get_data_link(duid=duid)
+        # was concerned about exposing the sample ID, but if the user has write access to the
+        # UPA then they can get the link with the sample ID, so don't worry about it.
+        self._check_perms(link.sample_node_address.sampleid, user, _SampleAccessType.ADMIN)
+        self._storage.expire_data_link(self._now(), user, duid=duid)
 
     def get_links_from_sample(
             self,
@@ -317,15 +348,73 @@ class Samples:
         # TODO ADMIN admin mode
         _not_falsy(user, 'user')
         _not_falsy(sample, 'sample')
-        if timestamp:
-            _check_timestamp(timestamp, 'timestamp')
-        else:
-            timestamp = self._now()
+        timestamp = self._resolve_timestamp(timestamp)
         self._check_perms(sample.sampleid, user, _SampleAccessType.READ)
         wsids = self._ws.get_user_workspaces(user)
         # TODO DATALINK what about deleted objects? Currently not handled
         return self._storage.get_links_from_sample(sample, wsids, timestamp)
 
-    # TODO DATALINK get links from data
-    # TODO DATALINK has link from ws object to sample method for get sample via object
-    # - handle ref path?
+    def _resolve_timestamp(self, timestamp: datetime.datetime = None) -> datetime.datetime:
+        if timestamp:
+            _check_timestamp(timestamp, 'timestamp')
+        else:
+            timestamp = self._now()
+        return timestamp
+
+    def get_links_from_data(
+            self,
+            user: UserID,
+            upa: UPA,
+            timestamp: datetime.datetime = None) -> List[DataLink]:
+        '''
+        Get a set of data links originating from a workspace object at a particular time.
+
+        :param user: the user requesting the links.
+        :param upa: the data from which the links originate.
+        :param timestamp: the timestamp during which the links should be active, defaulting to
+            the current time.
+        :returns: a list of links.
+        :raises UnauthorizedError: if the user does not have read permission for the data.
+        :raises NoSuchWorkspaceDataError: if the data does not exist.
+        '''
+        # TODO ADMIN admin mode
+        # may need to make this independent of the workspace. YAGNI.
+        # handle ref path?
+        _not_falsy(user, 'user')
+        _not_falsy(upa, 'upa')
+        timestamp = self._resolve_timestamp(timestamp)
+        self._ws.has_permission(user, _WorkspaceAccessType.READ, upa=upa)
+        return self._storage.get_links_from_data(upa, timestamp)
+
+    def get_sample_via_data(
+            self,
+            user: UserID,
+            upa: UPA,
+            sample_address: SampleAddress) -> SavedSample:
+        '''
+        Given a workspace object, get a sample linked to that object. The user must have read
+        permissions for the object, but not necessarily the sample. The link may be expired.
+
+        :param user: The user requesting the sample.
+        :param upa: the data from which the link to the sample originates.
+        :param sample_address: the sample address.
+        :returns: the linked sample.
+        :raises UnauthorizedError: if the user cannot read the UPA.
+        :raises NoSuchWorkspaceDataError: if the workspace object does not exist.
+        :raises NoSuchLinkError: if there is no link from the object to the sample.
+        :raises NoSuchSampleVersionError: if the sample version does not exist.
+        '''
+        # no admin mode needed - use get_links or get sample
+        # may need to make this independent of the workspace. YAGNI.
+        # handle ref path?
+        _not_falsy(user, 'user')
+        _not_falsy(upa, 'upa')
+        _not_falsy(sample_address, 'sample_address')
+        # the order of these checks is important, check read first, then we know link & sample
+        # access is ok
+        self._ws.has_permission(user, _WorkspaceAccessType.READ, upa=upa)
+        if not self._storage.has_data_link(upa, sample_address.sampleid):
+            raise _NoSuchLinkError(
+                f'There is no link from UPA {upa} to sample {sample_address.sampleid}')
+        # can't raise no sample error since a link exists
+        return self._storage.get_sample(sample_address.sampleid, sample_address.version)

@@ -364,6 +364,26 @@ class Application(object):
                              name='SampleService.get_metadata_key_static_metadata',
                              types=[dict])
         self.method_authentication['SampleService.get_metadata_key_static_metadata'] = 'none'  # noqa
+        self.rpc_service.add(impl_SampleService.create_data_link,
+                             name='SampleService.create_data_link',
+                             types=[dict])
+        self.method_authentication['SampleService.create_data_link'] = 'required'  # noqa
+        self.rpc_service.add(impl_SampleService.expire_data_link,
+                             name='SampleService.expire_data_link',
+                             types=[dict])
+        self.method_authentication['SampleService.expire_data_link'] = 'required'  # noqa
+        self.rpc_service.add(impl_SampleService.get_data_links_from_sample,
+                             name='SampleService.get_data_links_from_sample',
+                             types=[dict])
+        self.method_authentication['SampleService.get_data_links_from_sample'] = 'required'  # noqa
+        self.rpc_service.add(impl_SampleService.get_data_links_from_data,
+                             name='SampleService.get_data_links_from_data',
+                             types=[dict])
+        self.method_authentication['SampleService.get_data_links_from_data'] = 'required'  # noqa
+        self.rpc_service.add(impl_SampleService.get_sample_via_data,
+                             name='SampleService.get_sample_via_data',
+                             types=[dict])
+        self.method_authentication['SampleService.get_sample_via_data'] = 'required'  # noqa
         self.rpc_service.add(impl_SampleService.status,
                              name='SampleService.status',
                              types=[dict])

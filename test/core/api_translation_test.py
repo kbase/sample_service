@@ -9,16 +9,60 @@ from SampleService.core.api_translation import datetime_to_epochmilliseconds, ge
 from SampleService.core.api_translation import get_version_from_object, sample_to_dict
 from SampleService.core.api_translation import acls_to_dict, acls_from_dict
 from SampleService.core.api_translation import create_sample_params, get_sample_address_from_object
-from SampleService.core.api_translation import check_admin, get_static_key_metadata_params
-from SampleService.core.sample import Sample, SampleNode, SubSampleType, SavedSample
+from SampleService.core.api_translation import (
+    check_admin,
+    get_static_key_metadata_params,
+    create_data_link_params,
+    get_datetime_from_epochmilliseconds_in_object,
+    links_to_dicts,
+    get_upa_from_object,
+    get_data_unit_id_from_object,
+    get_user_from_object
+)
+from SampleService.core.data_link import DataLink
+from SampleService.core.sample import (
+    Sample,
+    SampleNode,
+    SampleAddress,
+    SampleNodeAddress,
+    SubSampleType,
+    SavedSample
+)
 from SampleService.core.acls import SampleACL, SampleACLOwnerless
-from SampleService.core.errors import IllegalParameterError, MissingParameterError
-from SampleService.core.errors import UnauthorizedError
+from SampleService.core.errors import (
+    IllegalParameterError,
+    MissingParameterError,
+    UnauthorizedError,
+    NoSuchUserError
+)
 from SampleService.core.acls import AdminPermission
 from SampleService.core.user_lookup import KBaseUserLookup
 from SampleService.core.user import UserID
+from SampleService.core.workspace import DataUnitID, UPA
 
 from core.test_utils import assert_exception_correct
+
+
+def test_get_user_from_object():
+    assert get_user_from_object({}, 'user') is None
+    assert get_user_from_object({'user': None}, 'user') is None
+    assert get_user_from_object({'user': '   a   '}, 'user') == UserID('a')
+
+
+def test_get_user_from_object_fail_bad_args():
+    _get_user_from_object_fail(None, 'us', ValueError('params cannot be None'))
+    _get_user_from_object_fail({'us': 'foo'}, None, MissingParameterError('key'))
+    _get_user_from_object_fail({'us': []}, 'us', IllegalParameterError(
+        'us must be a string if present'))
+    _get_user_from_object_fail({'us': 'baz\tbaat'}, 'us', IllegalParameterError(
+        # probably not worth the trouble to change the key name, we'll see
+        'userid contains control characters'))
+
+
+def _get_user_from_object_fail(params, key, expected):
+    with raises(Exception) as got:
+        get_user_from_object(params, key)
+    assert_exception_correct(got.value, expected)
 
 
 def test_get_id_from_object():
@@ -32,19 +76,19 @@ def test_get_id_from_object():
 
 
 def test_get_id_from_object_fail_bad_args():
-    get_id_from_object_fail({'id': 6}, True, IllegalParameterError(
+    _get_id_from_object_fail({'id': 6}, True, IllegalParameterError(
         'Sample ID 6 must be a UUID string'))
-    get_id_from_object_fail({
+    _get_id_from_object_fail({
         'id': 'f5bd78c3-823e-40b2-9f93-20e78680e41'},
         False,
         IllegalParameterError(
             'Sample ID f5bd78c3-823e-40b2-9f93-20e78680e41 must be a UUID string'))
-    get_id_from_object_fail(None, True, MissingParameterError('Sample ID'))
-    get_id_from_object_fail({}, True, MissingParameterError('Sample ID'))
-    get_id_from_object_fail({'id': None}, True, MissingParameterError('Sample ID'))
+    _get_id_from_object_fail(None, True, MissingParameterError('Sample ID'))
+    _get_id_from_object_fail({}, True, MissingParameterError('Sample ID'))
+    _get_id_from_object_fail({'id': None}, True, MissingParameterError('Sample ID'))
 
 
-def get_id_from_object_fail(d, required, expected):
+def _get_id_from_object_fail(d, required, expected):
     with raises(Exception) as got:
         get_id_from_object(d, required)
     assert_exception_correct(got.value, expected)
@@ -232,23 +276,26 @@ def create_sample_params_fail(params, expected):
 def test_get_version_from_object():
     assert get_version_from_object({}) is None
     assert get_version_from_object({'version': None}) is None
-    assert get_version_from_object({'version': 3}) == 3
+    assert get_version_from_object({'version': 3}, True) == 3
     assert get_version_from_object({'version': 1}) == 1
 
 
 def test_get_version_from_object_fail_bad_args():
-    get_version_from_object_fail(None, ValueError('params cannot be None'))
+    get_version_from_object_fail(None, False, ValueError('params cannot be None'))
+    get_version_from_object_fail({}, True, MissingParameterError('version'))
     get_version_from_object_fail(
-        {'version': 'whee'}, IllegalParameterError('Illegal version argument: whee'))
+        {'version': None}, True, MissingParameterError('version'))
     get_version_from_object_fail(
-        {'version': 0}, IllegalParameterError('Illegal version argument: 0'))
+        {'version': 'whee'}, False, IllegalParameterError('Illegal version argument: whee'))
     get_version_from_object_fail(
-        {'version': -3}, IllegalParameterError('Illegal version argument: -3'))
+        {'version': 0}, True, IllegalParameterError('Illegal version argument: 0'))
+    get_version_from_object_fail(
+        {'version': -3}, False, IllegalParameterError('Illegal version argument: -3'))
 
 
-def get_version_from_object_fail(params, expected):
+def get_version_from_object_fail(params, required, expected):
     with raises(Exception) as got:
-        get_version_from_object(params)
+        get_version_from_object(params, required)
     assert_exception_correct(got.value, expected)
 
 
@@ -257,33 +304,39 @@ def test_get_sample_address_from_object():
         UUID('f5bd78c3-823e-40b2-9f93-20e78680e41e'), None)
     assert get_sample_address_from_object({
         'id': 'f5bd78c3-823e-40b2-9f93-20e78680e41e',
-        'version': 1}) == (
+        'version': 1}, version_required=True) == (
         UUID('f5bd78c3-823e-40b2-9f93-20e78680e41e'), 1)
 
 
 def test_get_sample_address_from_object_fail_bad_args():
-    get_sample_address_from_object_fail(None, MissingParameterError('Sample ID'))
-    get_sample_address_from_object_fail({}, MissingParameterError('Sample ID'))
-    get_sample_address_from_object_fail({'id': None}, MissingParameterError('Sample ID'))
-    get_sample_address_from_object_fail({'id': 6}, IllegalParameterError(
+    get_sample_address_from_object_fail(None, False, MissingParameterError('Sample ID'))
+    get_sample_address_from_object_fail({}, False, MissingParameterError('Sample ID'))
+    get_sample_address_from_object_fail({'id': None}, False, MissingParameterError('Sample ID'))
+    get_sample_address_from_object_fail({'id': 6}, False, IllegalParameterError(
         'Sample ID 6 must be a UUID string'))
-    get_sample_address_from_object_fail({
-        'id': 'f5bd78c3-823e-40b2-9f93-20e78680e41'},
+    get_sample_address_from_object_fail(
+        {'id': 'f5bd78c3-823e-40b2-9f93-20e78680e41'}, False,
         IllegalParameterError(
             'Sample ID f5bd78c3-823e-40b2-9f93-20e78680e41 must be a UUID string'))
-
     id_ = 'f5bd78c3-823e-40b2-9f93-20e78680e41e'
+    get_sample_address_from_object_fail(
+        {'id': id_}, True, MissingParameterError('version'))
+    get_sample_address_from_object_fail(
+        {'id': id_, 'version': [1]}, False, IllegalParameterError('Illegal version argument: [1]'))
+
     get_version_from_object_fail(
-        {'id': id_, 'version': 'whee'}, IllegalParameterError('Illegal version argument: whee'))
+        {'id': id_, 'version': 'whee'},
+        True,
+        IllegalParameterError('Illegal version argument: whee'))
     get_version_from_object_fail(
-        {'id': id_, 'version': 0}, IllegalParameterError('Illegal version argument: 0'))
+        {'id': id_, 'version': 0}, True, IllegalParameterError('Illegal version argument: 0'))
     get_version_from_object_fail(
-        {'id': id_, 'version': -3}, IllegalParameterError('Illegal version argument: -3'))
+        {'id': id_, 'version': -3}, True, IllegalParameterError('Illegal version argument: -3'))
 
 
-def get_sample_address_from_object_fail(params, expected):
+def get_sample_address_from_object_fail(params, required, expected):
     with raises(Exception) as got:
-        get_sample_address_from_object(params)
+        get_sample_address_from_object(params, required)
     assert_exception_correct(got.value, expected)
 
 
@@ -435,7 +488,7 @@ def test_check_admin():
     r = AdminPermission.READ
     _check_admin(f, f, 'user1', 'somemethod', None,
                  f'User user1 is running method somemethod with administration permission FULL')
-    _check_admin(f, f, 'user1', 'somemethod', 'otheruser',
+    _check_admin(f, f, 'user1', 'somemethod', UserID('otheruser'),
                  f'User user1 is running method somemethod with administration permission FULL ' +
                  'as user otheruser')
     _check_admin(f, r, 'someuser', 'a_method', None,
@@ -449,11 +502,14 @@ def _check_admin(perm, permreq, user, method, as_user, expected_log):
     logs = []
 
     ul.is_admin.return_value = (perm, user)
+    ul.invalid_users.return_value = []
 
     assert check_admin(
         ul, 'thisisatoken', permreq, method, lambda x: logs.append(x), as_user) is True
 
     assert ul.is_admin.call_args_list == [(('thisisatoken',), {})]
+    if as_user:
+        ul.invalid_users.assert_called_once_with([as_user])
     assert logs == [expected_log]
 
 
@@ -519,6 +575,22 @@ def _check_admin_fail_no_admin_perms(permhas, permreq):
     assert log == [err]
 
 
+def test_check_admin_fail_no_such_user():
+    ul = create_autospec(KBaseUserLookup, spec_set=True, instance=True)
+    log = []
+
+    ul.is_admin.return_value = (AdminPermission.FULL, 'user1')
+    ul.invalid_users.return_value = [UserID('bruh')]
+
+    _check_admin_fail(
+        ul, 'token', AdminPermission.FULL, 'a method', lambda x: log.append(x), UserID('bruh'),
+        NoSuchUserError('bruh'))
+
+    ul.is_admin.assert_called_once_with('token')
+    ul.invalid_users.assert_called_once_with([UserID('bruh')])
+    assert log == []
+
+
 def _check_admin_fail(ul, token, perm, method, logfn, as_user, expected):
     with raises(Exception) as got:
         check_admin(ul, token, perm, method, logfn, as_user)
@@ -552,4 +624,242 @@ def test_get_static_key_metadata_params_fail_bad_args():
 def _get_static_key_metadata_params_fail(params, expected):
     with raises(Exception) as got:
         get_static_key_metadata_params(params)
+    assert_exception_correct(got.value, expected)
+
+
+def test_create_data_link_params_missing_update_key():
+    params = {
+        'id': '706fe9e1-70ef-4feb-bbd9-32295104a119',
+        'version': 78,
+        'node': 'mynode',
+        'upa': '6/7/29',
+        'dataid': 'mydata'
+    }
+
+    assert create_data_link_params(params) == (
+        DataUnitID(UPA('6/7/29'), 'mydata'),
+        SampleNodeAddress(
+            SampleAddress(UUID('706fe9e1-70ef-4feb-bbd9-32295104a119'), 78), 'mynode'),
+        False
+    )
+
+
+def test_create_data_link_params_with_update():
+    _create_data_link_params_with_update(None, False)
+    _create_data_link_params_with_update(False, False)  # doesn't work with SDK
+    _create_data_link_params_with_update(0, False)
+    _create_data_link_params_with_update([], False)  # illegal value theoretically
+    _create_data_link_params_with_update('', False)  # illegal value theoretically
+    _create_data_link_params_with_update(1, True)
+    # rest of these are theoretically illegal values
+    _create_data_link_params_with_update(100, True)
+    _create_data_link_params_with_update(-1, True)
+    _create_data_link_params_with_update('m', True)
+    _create_data_link_params_with_update({'a': 'b'}, True)
+
+
+def _create_data_link_params_with_update(update, expected):
+    params = {
+        'id': '706fe9e1-70ef-4feb-bbd9-32295104a119',
+        'version': 1,
+        'node': 'm',
+        'upa': '1/1/1',
+        'update': update
+    }
+
+    assert create_data_link_params(params) == (
+        DataUnitID(UPA('1/1/1')),
+        SampleNodeAddress(
+            SampleAddress(UUID('706fe9e1-70ef-4feb-bbd9-32295104a119'), 1), 'm'),
+        expected
+    )
+
+
+def test_create_data_link_params_fail_bad_args():
+    id_ = '706fe9e1-70ef-4feb-bbd9-32295104a119'
+    _create_data_link_params_fail(None, ValueError('params cannot be None'))
+    _create_data_link_params_fail({}, MissingParameterError('Sample ID'))
+    _create_data_link_params_fail({'id': 6}, IllegalParameterError(
+        'Sample ID 6 must be a UUID string'))
+    _create_data_link_params_fail({'id': id_[:-1]}, IllegalParameterError(
+        'Sample ID 706fe9e1-70ef-4feb-bbd9-32295104a11 must be a UUID string'))
+    _create_data_link_params_fail({'id': id_}, MissingParameterError('version'))
+    _create_data_link_params_fail(
+        {'id': id_, 'version': 'ver'},
+        IllegalParameterError('Illegal version argument: ver'))
+    _create_data_link_params_fail(
+        {'id': id_, 'version': -1},
+        IllegalParameterError('Illegal version argument: -1'))
+    _create_data_link_params_fail(
+        {'id': id_, 'version': 1},
+        MissingParameterError('node'))
+    _create_data_link_params_fail(
+        {'id': id_, 'version': 1, 'node': {'a': 'b'}},
+        IllegalParameterError('node key is not a string as required'))
+    _create_data_link_params_fail(
+        {'id': id_, 'version': 1, 'node': 'foo\tbar'},
+        IllegalParameterError('node contains control characters'))
+    _create_data_link_params_fail(
+        {'id': id_, 'version': 1, 'node': 'm'},
+        MissingParameterError('upa'))
+    _create_data_link_params_fail(
+        {'id': id_, 'version': 1, 'node': 'm', 'upa': 3.4},
+        IllegalParameterError('upa key is not a string as required'))
+    _create_data_link_params_fail(
+        {'id': id_, 'version': 1, 'node': 'm', 'upa': '1/0/1'},
+        IllegalParameterError('1/0/1 is not a valid UPA'))
+    _create_data_link_params_fail(
+        {'id': id_, 'version': 1, 'node': 'm', 'upa': '1/1/1', 'dataid': 6},
+        IllegalParameterError('dataid key is not a string as required'))
+    _create_data_link_params_fail(
+        {'id': id_, 'version': 1, 'node': 'm', 'upa': '1/1/1', 'dataid': 'yay\nyo'},
+        IllegalParameterError('dataid contains control characters'))
+
+
+def _create_data_link_params_fail(params, expected):
+    with raises(Exception) as got:
+        create_data_link_params(params)
+    assert_exception_correct(got.value, expected)
+
+
+def test_get_data_unit_id_from_object():
+    assert get_data_unit_id_from_object({'upa': '1/1/1'}) == DataUnitID(UPA('1/1/1'))
+    assert get_data_unit_id_from_object({'upa': '8/3/2'}) == DataUnitID(UPA('8/3/2'))
+    assert get_data_unit_id_from_object(
+        {'upa': '8/3/2', 'dataid': 'a'}) == DataUnitID(UPA('8/3/2'), 'a')
+
+
+def test_get_data_unit_id_from_object_fail_bad_args():
+    _get_data_unit_id_from_object_fail(None, ValueError('params cannot be None'))
+    _get_data_unit_id_from_object_fail({}, MissingParameterError('upa'))
+    _get_data_unit_id_from_object_fail({'upa': '1/0/1'}, IllegalParameterError(
+        '1/0/1 is not a valid UPA'))
+    _get_data_unit_id_from_object_fail({'upa': 82}, IllegalParameterError(
+        'upa key is not a string as required'))
+    _get_data_unit_id_from_object_fail({'upa': '1/1/1', 'dataid': []}, IllegalParameterError(
+        'dataid key is not a string as required'))
+    _get_data_unit_id_from_object_fail({'upa': '1/1/1', 'dataid': 'f\t/b'}, IllegalParameterError(
+        'dataid contains control characters'))
+
+
+def _get_data_unit_id_from_object_fail(params, expected):
+    with raises(Exception) as got:
+        get_data_unit_id_from_object(params)
+    assert_exception_correct(got.value, expected)
+
+
+def test_get_upa_from_object():
+    assert get_upa_from_object({'upa': '1/1/1'}) == UPA('1/1/1')
+    assert get_upa_from_object({'upa': '8/3/2'}) == UPA('8/3/2')
+
+
+def test_get_upa_from_object_fail_bad_args():
+    _get_upa_from_object_fail(None, ValueError('params cannot be None'))
+    _get_upa_from_object_fail({}, MissingParameterError('upa'))
+    _get_upa_from_object_fail({'upa': '1/0/1'}, IllegalParameterError('1/0/1 is not a valid UPA'))
+    _get_upa_from_object_fail({'upa': 82}, IllegalParameterError(
+        'upa key is not a string as required'))
+
+
+def _get_upa_from_object_fail(params, expected):
+    with raises(Exception) as got:
+        get_upa_from_object(params)
+    assert_exception_correct(got.value, expected)
+
+
+def test_get_datetime_from_epochmilliseconds_in_object():
+    gt = get_datetime_from_epochmilliseconds_in_object
+    assert gt({}, 'foo') is None
+    assert gt({'bar': 1}, 'foo') is None
+    assert gt({'foo': 0}, 'foo') == dt(0)
+    assert gt({'foo': 1}, 'foo') == dt(0.001)
+    assert gt({'foo': -1}, 'foo') == dt(-0.001)
+    assert gt({'bar': 1234877807185}, 'bar') == dt(1234877807.185)
+    assert gt({'bar': -1234877807185}, 'bar') == dt(-1234877807.185)
+    # should really test overflow but that's system dependent, no reliable test
+
+
+def test_get_datetime_from_epochmilliseconds_in_object_fail_bad_args():
+    gt = _get_datetime_from_epochmilliseconds_in_object_fail
+
+    gt(None, 'bar', ValueError('params cannot be None'))
+    gt({'foo': 'a'}, 'foo', IllegalParameterError(
+        "key 'foo' value of 'a' is not a valid epoch millisecond timestamp"))
+    gt({'ts': 1.2}, 'ts', IllegalParameterError(
+        "key 'ts' value of '1.2' is not a valid epoch millisecond timestamp"))
+
+
+def _get_datetime_from_epochmilliseconds_in_object_fail(params, key, expected):
+    with raises(Exception) as got:
+        get_datetime_from_epochmilliseconds_in_object(params, key)
+    assert_exception_correct(got.value, expected)
+
+
+def test_links_to_dicts():
+    links = [
+        DataLink(
+            UUID('f5bd78c3-823e-40b2-9f93-20e78680e41e'),
+            DataUnitID(UPA('1/2/3'), 'foo'),
+            SampleNodeAddress(
+                SampleAddress(UUID('f5bd78c3-823e-40b2-9f93-20e78680e41f'), 6), 'foo'),
+            dt(0.067),
+            UserID('usera'),
+            dt(89),
+            UserID('userb')
+        ),
+        DataLink(
+            UUID('f5bd78c3-823e-40b2-9f93-20e78680e41a'),
+            DataUnitID(UPA('4/9/10')),
+            SampleNodeAddress(
+                SampleAddress(UUID('f5bd78c3-823e-40b2-9f93-20e78680e41b'), 4), 'bar'),
+            dt(1),
+            UserID('userc'),
+        ),
+    ]
+    assert links_to_dicts(links) == [
+        {
+            'upa': '1/2/3',
+            'dataid': 'foo',
+            'id': 'f5bd78c3-823e-40b2-9f93-20e78680e41f',
+            'version': 6,
+            'node': 'foo',
+            'created': 67,
+            'createdby': 'usera',
+            'expired': 89000,
+            'expiredby': 'userb'
+            },
+        {
+            'upa': '4/9/10',
+            'dataid': None,
+            'id': 'f5bd78c3-823e-40b2-9f93-20e78680e41b',
+            'version': 4,
+            'node': 'bar',
+            'created': 1000,
+            'createdby': 'userc',
+            'expired': None,
+            'expiredby': None
+            }
+    ]
+
+
+def test_links_to_dicts_fail_bad_args():
+    dl = DataLink(
+            UUID('f5bd78c3-823e-40b2-9f93-20e78680e41e'),
+            DataUnitID(UPA('1/2/3'), 'foo'),
+            SampleNodeAddress(
+                SampleAddress(UUID('f5bd78c3-823e-40b2-9f93-20e78680e41f'), 6), 'foo'),
+            dt(0.067),
+            UserID('usera'),
+            dt(89),
+            UserID('userb')
+        )
+
+    _links_to_dicts_fail(None, ValueError('links cannot be None'))
+    _links_to_dicts_fail([dl, None], ValueError(
+        'Index 1 of iterable links cannot be a value that evaluates to false'))
+
+
+def _links_to_dicts_fail(links, expected):
+    with raises(Exception) as got:
+        links_to_dicts(links)
     assert_exception_correct(got.value, expected)
