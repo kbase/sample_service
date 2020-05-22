@@ -351,7 +351,7 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
     def ontology_has_ancestor_val(key: str, d1: Dict[str, PrimitiveType]) -> Optional[str]:
         for k, v in d1.items():
             if v is None:
-                return f'Meta value at key {k} is None'
+                return f'Metadata value at key {k} is None'
             ancestors=_get_ontology_ancestors(ontology, v)
             if ancestor_term not in ancestors:
                 return f'Metadata value at key {k} does not have {ontology} ancestor term {ancestor_term}'
