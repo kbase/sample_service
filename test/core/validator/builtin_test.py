@@ -399,6 +399,7 @@ def _ontology_has_ancestor_build_fail(cfg, expected):
 
 def test_ontology_has_ancestor_validate_fail():
     _ontology_has_ancestor_validate_fail(
+        {'ontology': 'envo_ontology', 'ancestor_term':'ENVO:00010483'}, {'a': None}, 'Metadata value at key a is None')
         {'ontology': 'envo_ontology', 'ancestor_term':'ENVO:00010483'}, {'a': 'foo'}, 'Metadata value at key a does not have envo_ontology ancestor term ENVO:00010483')
     _ontology_has_ancestor_validate_fail(
         {'ontology': 'envo_ontology', 'ancestor_term':'bar'}, {'a': 'ENVO:00002041'}, 'Metadata value at key a does not have envo_ontology ancestor term bar')

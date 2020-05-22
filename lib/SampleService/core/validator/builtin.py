@@ -320,7 +320,7 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
     '''
     Build a validation callable that checks that value has valid ontology ancestor term provided
 
-    The 'ontology' parameter is required and must be a string. It is the ontolgy name.
+    The 'ontology' parameter is required and must be a string. It is the ontology name.
 
     The 'ancestor_term' parameter is required and must be a string. It is the ancestor name.
 
@@ -342,17 +342,17 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
         raise ValueError('ancestor_term must be a string')
 
     def _get_ontology_ancestors(ontology, val):
-        oac=OntologyAPI('https://ci.kbase.us/services/service_wizard', service_ver='dev')
-        try:
-            ret=oac.get_ancestors({"id": val, "ns": ontology})
-            return list(map(lambda x: x["term"]["id"], ret["results"]))
-        except:
-            return []
+        srv_wiz_url=os.environ.get('KBASE_ENDPOINT', 'https://ci.kbase.us/services').strip('/') + '/service_wizard'
+        oac=OntologyAPI(srv_wiz_url)
+        ret=oac.get_ancestors({"id": val, "ns": ontology})
+        return list(map(lambda x: x["term"]["id"], ret["results"]))
     
     def ontology_has_ancestor_val(key: str, d1: Dict[str, PrimitiveType]) -> Optional[str]:
         for k, v in d1.items():
+            if v is None:
+                return f'Meta value at key {k} is None'
             ancestors=_get_ontology_ancestors(ontology, v)
-            if v is not None and ancestor_term not in ancestors:
+            if ancestor_term not in ancestors:
                 return f'Metadata value at key {k} does not have {ontology} ancestor term {ancestor_term}'
         return None
     return ontology_has_ancestor_val
