@@ -35,7 +35,7 @@ from auth_controller import AuthController
 # TODO should really test a start up for the case where the metadata validation config is not
 # supplied, but that's almost never going to be the case and the code is trivial, so YAGNI
 
-VER = '0.1.0-alpha9'
+VER = '0.1.0-alpha13'
 
 _AUTH_DB = 'test_auth_db'
 _WS_DB = 'test_ws_db'
@@ -391,6 +391,7 @@ def test_status(sample_port):
     s = res.json()
     # print(s)
     assert len(s['result']) == 1  # results are always in a list
+    assert_ms_epoch_close_to_now(s['result'][0]['servertime'])
     assert s['result'][0]['state'] == 'OK'
     assert s['result'][0]['message'] == ""
     assert s['result'][0]['version'] == VER
@@ -505,6 +506,14 @@ def test_create_and_get_sample_with_version(sample_port):
 
 
 def test_create_sample_as_admin(sample_port):
+    _create_sample_as_admin(sample_port, None, TOKEN2, USER2)
+
+
+def test_create_sample_as_admin_impersonate_user(sample_port):
+    _create_sample_as_admin(sample_port, '     ' + USER4 + '      ', TOKEN4, USER4)
+
+
+def _create_sample_as_admin(sample_port, as_user, get_token, expected_user):
     url = f'http://localhost:{sample_port}'
 
     # verison 1
@@ -522,7 +531,8 @@ def test_create_sample_as_admin(sample_port):
                                       }
                                      ]
                        },
-            'as_user': '     ' + USER4 + '   '
+            'as_admin': 1,
+            'as_user': as_user
         }]
     })
     # print(ret.text)
@@ -531,7 +541,7 @@ def test_create_sample_as_admin(sample_port):
     id_ = ret.json()['result'][0]['id']
 
     # get
-    ret = requests.post(url, headers=get_authorized_headers(TOKEN4), json={
+    ret = requests.post(url, headers=get_authorized_headers(get_token), json={
         'method': 'SampleService.get_sample',
         'version': '1.1',
         'id': '42',
@@ -545,7 +555,7 @@ def test_create_sample_as_admin(sample_port):
     assert j == {
         'id': id_,
         'version': 1,
-        'user': USER4,
+        'user': expected_user,
         'name': 'mysample',
         'node_tree': [{'id': 'root',
                        'parent': None,
@@ -553,6 +563,90 @@ def test_create_sample_as_admin(sample_port):
                        'meta_controlled': {'foo': {'bar': 'baz'}
                                            },
                        'meta_user': {'a': {'b': 'c'}}}]
+    }
+
+
+def test_create_sample_version_as_admin(sample_port):
+    _create_sample_version_as_admin(sample_port, None, USER2)
+
+
+def test_create_sample_version_as_admin_impersonate_user(sample_port):
+    _create_sample_version_as_admin(sample_port, USER3, USER3)
+
+
+def _create_sample_version_as_admin(sample_port, as_user, expected_user):
+    url = f'http://localhost:{sample_port}'
+
+    # verison 1
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN1), json={
+        'method': 'SampleService.create_sample',
+        'version': '1.1',
+        'id': '67',
+        'params': [{
+            'sample': {'name': 'mysample',
+                       'node_tree': [{'id': 'root',
+                                      'type': 'BioReplicate',
+                                      'meta_controlled': {'foo': {'bar': 'baz'},
+                                                          'stringlentest': {'foooo': 'barrr',
+                                                                            'spcky': 'fa'},
+                                                          'prefixed': {'safe': 'args'}
+                                                          },
+                                      'meta_user': {'a': {'b': 'c'}}
+                                      }
+                                     ]
+                       }
+        }]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    assert ret.json()['result'][0]['version'] == 1
+    id_ = ret.json()['result'][0]['id']
+
+    # version 2
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN2), json={
+        'method': 'SampleService.create_sample',
+        'version': '1.1',
+        'id': '68',
+        'params': [{
+            'sample': {'name': 'mysample2',
+                       'id': id_,
+                       'node_tree': [{'id': 'root2',
+                                      'type': 'BioReplicate',
+                                      'meta_controlled': {'foo': {'bar': 'bat'}},
+                                      'meta_user': {'a': {'b': 'd'}}
+                                      }
+                                     ]
+                       },
+            'as_admin': 1,
+            'as_user': as_user
+        }]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    assert ret.json()['result'][0]['version'] == 2
+
+    # get version 2
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN1), json={
+        'method': 'SampleService.get_sample',
+        'version': '1.1',
+        'id': '43',
+        'params': [{'id': id_}]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    j = ret.json()['result'][0]
+    assert_ms_epoch_close_to_now(j['save_date'])
+    del j['save_date']
+    assert j == {
+        'id': id_,
+        'version': 2,
+        'user': expected_user,
+        'name': 'mysample2',
+        'node_tree': [{'id': 'root2',
+                       'parent': None,
+                       'type': 'BioReplicate',
+                       'meta_controlled': {'foo': {'bar': 'bat'}},
+                       'meta_user': {'a': {'b': 'd'}}}]
     }
 
 
@@ -735,6 +829,7 @@ def _create_sample_fail_admin_as_user(sample_port, user, expected):
                                       }
                                      ]
                        },
+            'as_admin': 'true',
             'as_user': user
         }]
     })
@@ -759,6 +854,7 @@ def test_create_sample_fail_admin_permissions(sample_port):
                                       }
                                      ]
                        },
+            'as_admin': 1,
             'as_user': USER4
         }]
     })
@@ -1474,7 +1570,9 @@ def test_create_links_and_get_links_from_sample_basic(sample_port, workspace):
     # print(ret.text)
     assert ret.ok is True
 
-    assert len(ret.json()['result'][0]) == 1
+    assert len(ret.json()['result']) == 1
+    assert len(ret.json()['result'][0]) == 2
+    assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
     res = ret.json()['result'][0]['links']
     expected_links = [
         {
@@ -1517,7 +1615,9 @@ def test_create_links_and_get_links_from_sample_basic(sample_port, workspace):
     # print(ret.text)
     assert ret.ok is True
 
-    assert len(ret.json()['result'][0]) == 1
+    assert len(ret.json()['result']) == 1
+    assert len(ret.json()['result'][0]) == 2
+    assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
     res = ret.json()['result'][0]['links']
     assert_ms_epoch_close_to_now(res[0]['created'])
     del res[0]['created']
@@ -1543,10 +1643,17 @@ def test_create_links_and_get_links_from_sample_basic(sample_port, workspace):
     })
     # print(ret.text)
     assert ret.ok is True
-    assert ret.json()['result'][0] == {'links': []}
+
+    assert len(ret.json()['result']) == 1
+    assert len(ret.json()['result'][0]) == 2
+    assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
+    assert ret.json()['result'][0]['links'] == []
 
 
 def test_update_and_get_links_from_sample(sample_port, workspace):
+    '''
+    Also tests getting links from a sample using an effective time
+    '''
     url = f'http://localhost:{sample_port}'
     wsurl = f'http://localhost:{workspace.port}'
     wscli = Workspace(wsurl, token=TOKEN3)
@@ -1610,7 +1717,11 @@ def test_update_and_get_links_from_sample(sample_port, workspace):
     # print(ret.text)
     assert ret.ok is True
 
+    assert len(ret.json()['result']) == 1
     res = ret.json()['result'][0]
+    assert len(res) == 2
+    assert_ms_epoch_close_to_now(res['effective_time'])
+    del res['effective_time']
     created = res['links'][0]['created']
     assert_ms_epoch_close_to_now(created)
     del res['links'][0]['created']
@@ -1640,22 +1751,25 @@ def test_update_and_get_links_from_sample(sample_port, workspace):
     # print(ret.text)
     assert ret.ok is True
 
+    assert len(ret.json()['result']) == 1
     res = ret.json()['result'][0]
     assert res['links'][0]['expired'] == created - 1
     assert_ms_epoch_close_to_now(res['links'][0]['created'] + 1000)
     del res['links'][0]['created']
     del res['links'][0]['expired']
-    assert res == {'links': [
-        {
-            'id': id1,
-            'version': 1,
-            'node': 'foo',
-            'upa': '1/1/1',
-            'dataid': 'yay',
-            'createdby': USER3,
-            'expiredby': USER4,
-         }
-    ]}
+    assert res == {
+        'effective_time': round(oldlinkactive.timestamp() * 1000),
+        'links': [
+            {
+                'id': id1,
+                'version': 1,
+                'node': 'foo',
+                'upa': '1/1/1',
+                'dataid': 'yay',
+                'createdby': USER3,
+                'expiredby': USER4,
+            }
+        ]}
 
 
 def test_create_data_link_as_admin(sample_port, workspace):
@@ -1712,7 +1826,9 @@ def test_create_data_link_as_admin(sample_port, workspace):
     # print(ret.text)
     assert ret.ok is True
 
-    assert len(ret.json()['result'][0]) == 1
+    assert len(ret.json()['result']) == 1
+    assert len(ret.json()['result'][0]) == 2
+    assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
     res = ret.json()['result'][0]['links']
     expected_links = [
         {
@@ -1799,9 +1915,10 @@ def test_get_links_from_sample_exclude_workspaces(sample_port, workspace):
     # print(ret.text)
     assert ret.ok is True
 
-    assert len(ret.json()['result'][0]) == 1
+    assert len(ret.json()['result']) == 1
+    assert len(ret.json()['result'][0]) == 2
+    assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
     res = ret.json()['result'][0]['links']
-    print(res)
     expected_links = [
         {
             'id': id_,
@@ -1842,6 +1959,53 @@ def test_get_links_from_sample_exclude_workspaces(sample_port, workspace):
 
     for l in expected_links:
         assert l in res
+
+
+def test_get_links_from_sample_as_admin(sample_port, workspace):
+    url = f'http://localhost:{sample_port}'
+    wsurl = f'http://localhost:{workspace.port}'
+    wscli = Workspace(wsurl, token=TOKEN4)
+
+    # create workspace & objects
+    wscli.create_workspace({'workspace': 'foo'})
+    wscli.save_objects({'id': 1, 'objects': [
+        {'name': 'bar', 'data': {}, 'type': 'Trivial.Object-1.0'},
+        ]})
+
+    # create sample
+    id_ = _create_generic_sample(url, TOKEN4)
+
+    # create links
+    _create_link(url, TOKEN4, {'id': id_, 'version': 1, 'node': 'foo', 'upa': '1/1/1'})
+
+    # check correct links are returned, user 3 has read admin perms, but not full
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN3), json={
+        'method': 'SampleService.get_data_links_from_sample',
+        'version': '1.1',
+        'id': '42',
+        'params': [{'id': id_, 'version': 1, 'as_admin': 1}]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+
+    assert len(ret.json()['result']) == 1
+    assert len(ret.json()['result'][0]) == 2
+    assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
+    assert len(ret.json()['result'][0]['links']) == 1
+    link = ret.json()['result'][0]['links'][0]
+    assert_ms_epoch_close_to_now(link['created'])
+    del link['created']
+
+    assert link == {
+            'id': id_,
+            'version': 1,
+            'node': 'foo',
+            'upa': '1/1/1',
+            'dataid': None,
+            'createdby': USER4,
+            'expiredby': None,
+            'expired': None
+         }
 
 
 def test_create_link_fail(sample_port, workspace):
@@ -1891,7 +2055,12 @@ def test_create_link_fail(sample_port, workspace):
     # admin tests
     _create_link_fail(
         sample_port, TOKEN2,
-        {'id': id_, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'as_user': 'foo\bbar'},
+        {'id': id_,
+         'version': 1,
+         'node': 'foo',
+         'upa': '1/1/1',
+         'as_admin': 1,
+         'as_user': 'foo\bbar'},
         f'Sample service error code 30001 Illegal input parameter: ' +
         'userid contains control characters')
     _create_link_fail(
@@ -1974,6 +2143,12 @@ def test_get_links_from_sample_fail(sample_port):
         sample_port, TOKEN3, {'id': str(badid), 'version': 1},
         f'Sample service error code 50010 No such sample: {badid}')
 
+    # admin tests
+    _get_link_from_sample_fail(
+        sample_port, TOKEN4, {'id': id_, 'version': 1, 'as_admin': 1},
+        'Sample service error code 20000 Unauthorized: User user4 does not have the ' +
+        'necessary administration privileges to run method get_data_links_from_sample')
+
 
 def _get_link_from_sample_fail(sample_port, token, params, expected):
     url = f'http://localhost:{sample_port}'
@@ -2000,6 +2175,7 @@ def test_expire_data_link_with_data_id(sample_port, workspace):
 
 
 def _expire_data_link(sample_port, workspace, dataid):
+    ''' also tests that 'as_user' is ignored if 'as_admin' is false '''
     url = f'http://localhost:{sample_port}'
     wsurl = f'http://localhost:{workspace.port}'
     wscli = Workspace(wsurl, token=TOKEN3)
@@ -2038,7 +2214,7 @@ def _expire_data_link(sample_port, workspace, dataid):
         'method': 'SampleService.expire_data_link',
         'version': '1.1',
         'id': '42',
-        'params': [{'upa': '1/1/1', 'dataid': dataid}]
+        'params': [{'upa': '1/1/1', 'dataid': dataid, 'as_user': USER1}]
     })
     # print(ret.text)
     assert ret.ok is True
@@ -2053,7 +2229,9 @@ def _expire_data_link(sample_port, workspace, dataid):
     # print(ret.text)
     assert ret.ok is True
 
-    assert len(ret.json()['result'][0]) == 1
+    assert len(ret.json()['result']) == 1
+    assert len(ret.json()['result'][0]) == 2
+    assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
     links = ret.json()['result'][0]['links']
     assert len(links) == 2
     for l in links:
@@ -2088,6 +2266,87 @@ def _expire_data_link(sample_port, workspace, dataid):
             'createdby': USER3,
             'expiredby': None,
             'expired': None
+         }
+
+
+def test_expire_data_link_as_admin(sample_port, workspace):
+    _expire_data_link_as_admin(sample_port, workspace, None, USER2)
+
+
+def test_expire_data_link_as_admin_impersonate_user(sample_port, workspace):
+    _expire_data_link_as_admin(sample_port, workspace, USER4, USER4)
+
+
+def _expire_data_link_as_admin(sample_port, workspace, user, expected_user):
+    url = f'http://localhost:{sample_port}'
+    wsurl = f'http://localhost:{workspace.port}'
+    wscli = Workspace(wsurl, token=TOKEN3)
+
+    # create workspace & objects
+    wscli.create_workspace({'workspace': 'foo'})
+    wscli.save_objects({'id': 1, 'objects': [
+        {'name': 'bar', 'data': {}, 'type': 'Trivial.Object-1.0'},
+        ]})
+    wscli.set_permissions({'id': 1, 'new_permission': 'w', 'users': [USER4]})
+
+    # create samples
+    id1 = _create_sample(
+        url,
+        TOKEN3,
+        {'name': 'mysample',
+         'node_tree': [{'id': 'root', 'type': 'BioReplicate'},
+                       {'id': 'foo', 'type': 'TechReplicate', 'parent': 'root'},
+                       {'id': 'bar', 'type': 'TechReplicate', 'parent': 'root'}
+                       ]
+         },
+        1
+        )
+
+    # create links
+    _create_link(
+        url, TOKEN3, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'duidy'})
+
+    time.sleep(1)  # need to be able to set a resonable effective time to fetch links
+
+    # expire link
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN2), json={
+        'method': 'SampleService.expire_data_link',
+        'version': '1.1',
+        'id': '42',
+        'params': [{'upa': '1/1/1', 'dataid': 'duidy', 'as_admin': 1, 'as_user': user}]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+
+    # check links
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN4), json={
+        'method': 'SampleService.get_data_links_from_data',
+        'version': '1.1',
+        'id': '42',
+        'params': [{'upa': '1/1/1', 'effective_time': _get_current_epochmillis() - 500}]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+
+    assert len(ret.json()['result']) == 1
+    assert len(ret.json()['result'][0]) == 2
+    assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
+    links = ret.json()['result'][0]['links']
+    assert len(links) == 1
+    link = links[0]
+    assert_ms_epoch_close_to_now(link['expired'])
+    assert_ms_epoch_close_to_now(link['created'] + 1000)
+    del link['created']
+    del link['expired']
+
+    assert link == {
+            'id': id1,
+            'version': 1,
+            'node': 'foo',
+            'upa': '1/1/1',
+            'dataid': 'duidy',
+            'createdby': USER3,
+            'expiredby': expected_user,
          }
 
 
@@ -2150,6 +2409,22 @@ def test_expire_data_link_fail(sample_port, workspace):
         sample_port, TOKEN4, {'upa': '1/1/1', 'dataid': 'yay'},
         f'Sample service error code 20000 Unauthorized: User user4 cannot ' +
         f'administrate sample {id1}')
+
+    # admin tests
+    _expire_data_link_fail(
+        sample_port, TOKEN2,
+        {'upa': '1/1/1', 'dataid': 'yay', 'as_admin': ['t'], 'as_user': 'foo\tbar'},
+        'Sample service error code 30001 Illegal input parameter: ' +
+        'userid contains control characters')
+    _expire_data_link_fail(
+        sample_port, TOKEN3,
+        {'upa': '1/1/1', 'dataid': 'yay', 'as_admin': ['t'], 'as_user': USER4},
+        'Sample service error code 20000 Unauthorized: User user3 does not have ' +
+        'the necessary administration privileges to run method expire_data_link')
+    _expire_data_link_fail(
+        sample_port, TOKEN2,
+        {'upa': '1/1/1', 'dataid': 'yay', 'as_admin': ['t'], 'as_user': 'fake'},
+        'Sample service error code 50000 No such user: fake')
 
 
 def _expire_data_link_fail(sample_port, token, params, expected):
@@ -2237,7 +2512,9 @@ def test_get_links_from_data(sample_port, workspace):
     # print(ret.text)
     assert ret.ok is True
 
-    assert len(ret.json()['result'][0]) == 1
+    assert len(ret.json()['result']) == 1
+    assert len(ret.json()['result'][0]) == 2
+    assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
     res = ret.json()['result'][0]['links']
     expected_links = [
         {
@@ -2280,7 +2557,9 @@ def test_get_links_from_data(sample_port, workspace):
     # print(ret.text)
     assert ret.ok is True
 
-    assert len(ret.json()['result'][0]) == 1
+    assert len(ret.json()['result']) == 1
+    assert len(ret.json()['result'][0]) == 2
+    assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
     res = ret.json()['result'][0]['links']
     assert_ms_epoch_close_to_now(res[0]['created'])
     del res[0]['created']
@@ -2306,7 +2585,10 @@ def test_get_links_from_data(sample_port, workspace):
     })
     # print(ret.text)
     assert ret.ok is True
-    assert ret.json()['result'][0] == {'links': []}
+    assert len(ret.json()['result']) == 1
+    assert len(ret.json()['result'][0]) == 2
+    assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
+    assert ret.json()['result'][0]['links'] == []
 
 
 def test_get_links_from_data_expired(sample_port, workspace):
@@ -2361,7 +2643,11 @@ def test_get_links_from_data_expired(sample_port, workspace):
     # print(ret.text)
     assert ret.ok is True
 
+    assert len(ret.json()['result']) == 1
     res = ret.json()['result'][0]
+    assert len(res) == 2
+    assert_ms_epoch_close_to_now(res['effective_time'])
+    del res['effective_time']
     created = res['links'][0]['created']
     assert_ms_epoch_close_to_now(created)
     del res['links'][0]['created']
@@ -2390,22 +2676,81 @@ def test_get_links_from_data_expired(sample_port, workspace):
     # print(ret.text)
     assert ret.ok is True
 
+    assert len(ret.json()['result']) == 1
     res = ret.json()['result'][0]
     assert res['links'][0]['expired'] == created - 1
     assert_ms_epoch_close_to_now(res['links'][0]['created'] + 1000)
     del res['links'][0]['created']
     del res['links'][0]['expired']
-    assert res == {'links': [
-        {
+    assert res == {
+        'effective_time': round(oldlinkactive.timestamp() * 1000),
+        'links': [
+            {
+                'id': id1,
+                'version': 1,
+                'node': 'foo',
+                'upa': '1/1/1',
+                'dataid': 'yay',
+                'createdby': USER3,
+                'expiredby': USER4,
+            }
+        ]}
+
+
+def test_get_links_from_data_as_admin(sample_port, workspace):
+
+    url = f'http://localhost:{sample_port}'
+    wsurl = f'http://localhost:{workspace.port}'
+    wscli = Workspace(wsurl, token=TOKEN4)
+
+    # create workspace & objects
+    wscli.create_workspace({'workspace': 'foo'})
+    wscli.save_objects({'id': 1, 'objects': [
+        {'name': 'bar', 'data': {}, 'type': 'Trivial.Object-1.0'},
+        ]})
+
+    # create samples
+    id1 = _create_sample(
+        url,
+        TOKEN4,
+        {'name': 'mysample',
+         'node_tree': [{'id': 'root', 'type': 'BioReplicate'},
+                       {'id': 'foo', 'type': 'TechReplicate', 'parent': 'root'}
+                       ]
+         },
+        1
+        )
+
+    # create links
+    _create_link(url, TOKEN4, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1'})
+
+    # get links from object, user 3 has admin read perms
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN3), json={
+        'method': 'SampleService.get_data_links_from_data',
+        'version': '1.1',
+        'id': '42',
+        'params': [{'upa': '1/1/1', 'as_admin': 1}]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+
+    assert len(ret.json()['result']) == 1
+    assert len(ret.json()['result'][0]) == 2
+    assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
+    assert len(ret.json()['result'][0]['links']) == 1
+    link = ret.json()['result'][0]['links'][0]
+    assert_ms_epoch_close_to_now(link['created'])
+    del link['created']
+    assert link == {
             'id': id1,
             'version': 1,
             'node': 'foo',
             'upa': '1/1/1',
-            'dataid': 'yay',
-            'createdby': USER3,
-            'expiredby': USER4,
+            'dataid': None,
+            'createdby': USER4,
+            'expiredby': None,
+            'expired': None
          }
-    ]}
 
 
 def test_get_links_from_data_fail(sample_port, workspace):
@@ -2431,6 +2776,28 @@ def test_get_links_from_data_fail(sample_port, workspace):
     _get_link_from_data_fail(
         sample_port, TOKEN3, {'upa': '1/2/1'},
         f'Sample service error code 50040 No such workspace data: Object 1/2/1 does not exist')
+
+    # admin tests (also tests missing / deleted objects)
+    _get_link_from_data_fail(
+        sample_port, TOKEN4, {'upa': '1/1/1', 'as_admin': 1},
+        'Sample service error code 20000 Unauthorized: User user4 does not have the necessary ' +
+        'administration privileges to run method get_data_links_from_data')
+    _get_link_from_data_fail(
+        sample_port, TOKEN3, {'upa': '1/1/2', 'as_admin': 1},
+        'Sample service error code 50040 No such workspace data: Object 1/1/2 does not exist')
+    _get_link_from_data_fail(
+        sample_port, TOKEN3, {'upa': '2/1/1', 'as_admin': 1},
+        'Sample service error code 50040 No such workspace data: No workspace with id 2 exists')
+
+    wscli.delete_objects([{'ref': '1/1'}])
+    _get_link_from_data_fail(
+        sample_port, TOKEN3, {'upa': '1/1/1', 'as_admin': 1},
+        'Sample service error code 50040 No such workspace data: Object 1/1/1 does not exist')
+
+    wscli.delete_workspace({'id': 1})
+    _get_link_from_data_fail(
+        sample_port, TOKEN3, {'upa': '1/1/1', 'as_admin': 1},
+        'Sample service error code 50040 No such workspace data: Workspace 1 is deleted')
 
 
 def _get_link_from_data_fail(sample_port, token, params, expected):

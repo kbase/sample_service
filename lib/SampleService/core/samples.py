@@ -3,7 +3,7 @@ Core class for saving and getting samples.
 '''
 
 import datetime
-import uuid as _uuid
+import uuid as _uuid  # lgtm [py/import-and-import-from]
 from uuid import UUID
 
 from typing import Optional, Callable, Tuple, List, Dict, Union, cast as _cast
@@ -71,7 +71,8 @@ class Samples:
             sample: Sample,
             user: UserID,
             id_: UUID = None,
-            prior_version: Optional[int] = None) -> Tuple[UUID, int]:
+            prior_version: Optional[int] = None,
+            as_admin: bool = False) -> Tuple[UUID, int]:
         '''
         Save a sample.
 
@@ -79,8 +80,9 @@ class Samples:
         :param user: the username of the user saving the sample.
         :param id_: if the sample is a new version of a sample, the ID of the sample which will
             get a new version.
-        :prior_version: if id_ is included, specifying prior_version will ensure that the new
+        :param prior_version: if id_ is included, specifying prior_version will ensure that the new
             sample is saved with version prior_version + 1 or not at all.
+        :param as_admin: skip ACL checks for new versions.
         :returns a tuple of the sample ID and version.
         :raises IllegalParameterError: if the prior version is < 1
         :raises UnauthorizedError: if the user does not have write permission to the sample when
@@ -93,11 +95,10 @@ class Samples:
         _not_falsy(sample, 'sample')
         _not_falsy(user, 'user')
         self._validate_metadata(sample)
-        # TODO ADMIN as_admin should allow saving a new version
         if id_:
             if prior_version is not None and prior_version < 1:
                 raise _IllegalParameterError('Prior version must be > 0')
-            self._check_perms(id_, user, _SampleAccessType.WRITE)
+            self._check_perms(id_, user, _SampleAccessType.WRITE, as_admin=as_admin)
             swid = SavedSample(id_, user, list(sample.nodes), self._now(), sample.name)
             ver = self._storage.save_sample_version(swid, prior_version)
         else:
@@ -301,7 +302,7 @@ class Samples:
         dl = DataLink(self._uuid_gen(), duid, sna, self._now(), user)
         self._storage.create_data_link(dl, update=update)
 
-    def expire_data_link(self, user: UserID, duid: DataUnitID) -> None:
+    def expire_data_link(self, user: UserID, duid: DataUnitID, as_admin: bool = False) -> None:
         '''
         Expire a data link, ensuring that it will not show up in link queries without an effective
         timestamp in the past.
@@ -310,28 +311,32 @@ class Samples:
 
         :param user: the user expiring the link.
         :param duid: the data unit ID for the extant link.
+        :param as_admin: allow link expiration to proceed if user does not have
+            appropriate permissions.
         :raises UnauthorizedError: if the user does not have acceptable permissions.
         :raises NoSuchWorkspaceDataError: if the workspace doesn't exist.
         :raises NoSuchLinkError: if there is no link from the data unit.
         '''
-        # TODO ADMIN admin mode
         _not_falsy(user, 'user')
         _not_falsy(duid, 'duid')
         # allow expiring links for deleted objects. It should be impossible to have a link
         # for an object that has never existed.
         # TODO DOCUMENT What about deleted workspaces? Links should be inaccessible as is
-        self._ws.has_permission(user, _WorkspaceAccessType.WRITE, workspace_id=duid.upa.wsid)
+        wsperm = _WorkspaceAccessType.NONE if as_admin else _WorkspaceAccessType.WRITE
+        self._ws.has_permission(user, wsperm, workspace_id=duid.upa.wsid)
         link = self._storage.get_data_link(duid=duid)
         # was concerned about exposing the sample ID, but if the user has write access to the
         # UPA then they can get the link with the sample ID, so don't worry about it.
-        self._check_perms(link.sample_node_address.sampleid, user, _SampleAccessType.ADMIN)
+        self._check_perms(
+            link.sample_node_address.sampleid, user, _SampleAccessType.ADMIN, as_admin=as_admin)
         self._storage.expire_data_link(self._now(), user, duid=duid)
 
     def get_links_from_sample(
             self,
             user: UserID,
             sample: SampleAddress,
-            timestamp: datetime.datetime = None) -> List[DataLink]:
+            timestamp: datetime.datetime = None,
+            as_admin: bool = False) -> Tuple[List[DataLink], datetime.datetime]:
         '''
         Get a set of data links originating from a sample at a particular time.
 
@@ -339,20 +344,21 @@ class Samples:
         :param sample: the sample from which the links originate.
         :param timestamp: the timestamp during which the links should be active, defaulting to
             the current time.
-        :returns: a list of links.
+        :param as_admin: allow link retrieval to proceed if user does not have
+            appropriate permissions.
+        :returns: a tuple consisting of a list of links and the timestamp used to query the links.
         :raises UnauthorizedError: if the user does not have read permission for the sample.
         :raises NoSuchSampleError: if the sample does not exist.
         :raises NoSuchSampleVersionError: if the sample version does not exist.
         :raises NoSuchUserError: if the user does not exist.
         '''
-        # TODO ADMIN admin mode
         _not_falsy(user, 'user')
         _not_falsy(sample, 'sample')
         timestamp = self._resolve_timestamp(timestamp)
-        self._check_perms(sample.sampleid, user, _SampleAccessType.READ)
-        wsids = self._ws.get_user_workspaces(user)
+        self._check_perms(sample.sampleid, user, _SampleAccessType.READ, as_admin=as_admin)
+        wsids = None if as_admin else self._ws.get_user_workspaces(user)
         # TODO DATALINK what about deleted objects? Currently not handled
-        return self._storage.get_links_from_sample(sample, wsids, timestamp)
+        return self._storage.get_links_from_sample(sample, wsids, timestamp), timestamp
 
     def _resolve_timestamp(self, timestamp: datetime.datetime = None) -> datetime.datetime:
         if timestamp:
@@ -365,7 +371,8 @@ class Samples:
             self,
             user: UserID,
             upa: UPA,
-            timestamp: datetime.datetime = None) -> List[DataLink]:
+            timestamp: datetime.datetime = None,
+            as_admin: bool = False) -> Tuple[List[DataLink], datetime.datetime]:
         '''
         Get a set of data links originating from a workspace object at a particular time.
 
@@ -373,18 +380,21 @@ class Samples:
         :param upa: the data from which the links originate.
         :param timestamp: the timestamp during which the links should be active, defaulting to
             the current time.
-        :returns: a list of links.
+        :param as_admin: allow link retrieval to proceed if user does not have
+            appropriate permissions.
+        :returns: a tuple consisting of a list of links and the timestamp used to query the links.
         :raises UnauthorizedError: if the user does not have read permission for the data.
         :raises NoSuchWorkspaceDataError: if the data does not exist.
         '''
-        # TODO ADMIN admin mode
         # may need to make this independent of the workspace. YAGNI.
         # handle ref path?
         _not_falsy(user, 'user')
         _not_falsy(upa, 'upa')
         timestamp = self._resolve_timestamp(timestamp)
-        self._ws.has_permission(user, _WorkspaceAccessType.READ, upa=upa)
-        return self._storage.get_links_from_data(upa, timestamp)
+        # NONE still checks that WS/obj exists. If it's deleted this method should fail
+        wsperm = _WorkspaceAccessType.NONE if as_admin else _WorkspaceAccessType.READ
+        self._ws.has_permission(user, wsperm, upa=upa)
+        return self._storage.get_links_from_data(upa, timestamp), timestamp
 
     def get_sample_via_data(
             self,

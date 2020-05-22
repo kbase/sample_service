@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 #BEGIN_HEADER
 
+import datetime as _datetime
+
 from SampleService.core.config import build_samples as _build_samples
 from SampleService.core.api_translation import (get_sample_address_from_object as
                                                 _get_sample_address_from_object)
@@ -17,7 +19,8 @@ from SampleService.core.api_translation import (
     links_to_dicts as _links_to_dicts,
     get_upa_from_object as _get_upa_from_object,
     get_data_unit_id_from_object as _get_data_unit_id_from_object,
-    get_user_from_object as _get_user_from_object
+    get_admin_request_from_object as _get_admin_request_from_object,
+    datetime_to_epochmilliseconds as _datetime_to_epochmilliseconds
     )
 from SampleService.core.acls import AdminPermission as _AdminPermission
 from SampleService.core.sample import SampleAddress as _SampleAddress
@@ -47,9 +50,9 @@ Note that usage of the administration flags will be logged by the service.
     # state. A method could easily clobber the state set by another while
     # the latter method is running.
     ######################################### noqa
-    VERSION = "0.1.0-alpha9"
+    VERSION = "0.1.0-alpha13"
     GIT_URL = "https://github.com/mrcreosote/sample_service.git"
-    GIT_COMMIT_HASH = "e725d33ff63ac128301e096c2b85854a739d50c3"
+    GIT_COMMIT_HASH = "6a9a9f940e9da95ef926485b7a94555657ceb94e"
 
     #BEGIN_CLASS_HEADER
     #END_CLASS_HEADER
@@ -60,7 +63,6 @@ Note that usage of the administration flags will be logged by the service.
         #BEGIN_CONSTRUCTOR
         self._samples, self._user_lookup = _build_samples(config)
         #END_CONSTRUCTOR
-        pass
 
     def create_sample(self, ctx, params):
         """
@@ -73,35 +75,46 @@ Note that usage of the administration flags will be logged by the service.
            ignored. sample - the sample to save. prior_version - if non-null,
            ensures that no other sample version is saved between
            prior_version and the version that is created by this save. If
-           this is not the case, the sample will fail to save. as_user - save
-           the sample as a different user. The actual user must have full
-           administration permissions.) -> structure: parameter "sample" of
-           type "Sample" (A Sample, consisting of a tree of subsamples and
-           replicates. id - the ID of the sample. user - the user that saved
-           the sample. node_tree - the tree(s) of sample nodes in the sample.
-           The the roots of all trees must be BioReplicate nodes. All the
-           BioReplicate nodes must be at the start of the list, and all child
-           nodes must occur after their parents in the list. name - the name
-           of the sample. Must be less than 255 characters. save_date - the
-           date the sample version was saved. version - the version of the
-           sample.) -> structure: parameter "id" of type "sample_id" (A
-           Sample ID. Must be globally unique. Always assigned by the Sample
-           service.), parameter "user" of type "user" (A user's username.),
-           parameter "node_tree" of list of type "SampleNode" (A node in a
-           sample tree. id - the ID of the node. parent - the id of the
-           parent node for the current node. BioReplicate nodes, and only
-           BioReplicate nodes, do not have a parent. type - the type of the
-           node. meta_controlled - metadata restricted by the sample
-           controlled vocabulary and validators. meta_user - unrestricted
-           metadata.) -> structure: parameter "id" of type "node_id" (A
-           SampleNode ID. Must be unique within a Sample and be less than 255
-           characters.), parameter "parent" of type "node_id" (A SampleNode
-           ID. Must be unique within a Sample and be less than 255
-           characters.), parameter "type" of type "samplenode_type" (The type
-           of a sample node. One of: BioReplicate - a biological replicate.
-           Always at the top of the sample tree. TechReplicate - a technical
-           replicate. SubSample - a sub sample that is not a technical
-           replicate.), parameter "meta_controlled" of type "metadata"
+           this is not the case, the sample will fail to save. as_admin - run
+           the method as a service administrator. The user must have full
+           administration permissions. as_user - create the sample as a
+           different user. Ignored if as_admin is not true. Neither the
+           administrator nor the impersonated user need have permissions to
+           the sample if a new version is saved.) -> structure: parameter
+           "sample" of type "Sample" (A Sample, consisting of a tree of
+           subsamples and replicates. id - the ID of the sample. user - the
+           user that saved the sample. node_tree - the tree(s) of sample
+           nodes in the sample. The the roots of all trees must be
+           BioReplicate nodes. All the BioReplicate nodes must be at the
+           start of the list, and all child nodes must occur after their
+           parents in the list. name - the name of the sample. Must be less
+           than 255 characters. save_date - the date the sample version was
+           saved. version - the version of the sample.) -> structure:
+           parameter "id" of type "sample_id" (A Sample ID. Must be globally
+           unique. Always assigned by the Sample service.), parameter "user"
+           of type "user" (A user's username.), parameter "node_tree" of list
+           of type "SampleNode" (A node in a sample tree. id - the ID of the
+           node. parent - the id of the parent node for the current node.
+           BioReplicate nodes, and only BioReplicate nodes, do not have a
+           parent. type - the type of the node. meta_controlled - metadata
+           restricted by the sample controlled vocabulary and validators.
+           meta_user - unrestricted metadata.) -> structure: parameter "id"
+           of type "node_id" (A SampleNode ID. Must be unique within a Sample
+           and be less than 255 characters.), parameter "parent" of type
+           "node_id" (A SampleNode ID. Must be unique within a Sample and be
+           less than 255 characters.), parameter "type" of type
+           "samplenode_type" (The type of a sample node. One of: BioReplicate
+           - a biological replicate. Always at the top of the sample tree.
+           TechReplicate - a technical replicate. SubSample - a sub sample
+           that is not a technical replicate.), parameter "meta_controlled"
+           of type "metadata" (Metadata attached to a sample. The
+           UnspecifiedObject map values MUST be a primitive type - either
+           int, float, string, or equivalent typedefs.) -> mapping from type
+           "metadata_key" (A key in a metadata key/value pair. Less than 1000
+           unicode characters.) to mapping from type "metadata_value_key" (A
+           key for a value associated with a piece of metadata. Less than
+           1000 unicode characters. Examples: units, value, species) to
+           unspecified object, parameter "meta_user" of type "metadata"
            (Metadata attached to a sample. The UnspecifiedObject map values
            MUST be a primitive type - either int, float, string, or
            equivalent typedefs.) -> mapping from type "metadata_key" (A key
@@ -109,20 +122,13 @@ Note that usage of the administration flags will be logged by the service.
            to mapping from type "metadata_value_key" (A key for a value
            associated with a piece of metadata. Less than 1000 unicode
            characters. Examples: units, value, species) to unspecified
-           object, parameter "meta_user" of type "metadata" (Metadata
-           attached to a sample. The UnspecifiedObject map values MUST be a
-           primitive type - either int, float, string, or equivalent
-           typedefs.) -> mapping from type "metadata_key" (A key in a
-           metadata key/value pair. Less than 1000 unicode characters.) to
-           mapping from type "metadata_value_key" (A key for a value
-           associated with a piece of metadata. Less than 1000 unicode
-           characters. Examples: units, value, species) to unspecified
            object, parameter "name" of type "sample_name" (A sample name.
            Must be less than 255 characters.), parameter "save_date" of type
            "timestamp" (A timestamp in epoch milliseconds.), parameter
            "version" of type "version" (The version of a sample. Always >
-           0.), parameter "prior_version" of Long, parameter "as_user" of
-           type "user" (A user's username.)
+           0.), parameter "prior_version" of Long, parameter "as_admin" of
+           type "boolean" (A boolean value, 0 for false, 1 for true.),
+           parameter "as_user" of type "user" (A user's username.)
         :returns: instance of type "SampleAddress" (A Sample ID and version.
            id - the ID of the sample. version - the version of the sample.)
            -> structure: parameter "id" of type "sample_id" (A Sample ID.
@@ -133,14 +139,14 @@ Note that usage of the administration flags will be logged by the service.
         # ctx is the context object
         # return variables are: address
         #BEGIN create_sample
-        s, id_, pv = _create_sample_params(params)
-        user = _get_user_from_object(params, 'as_user')
-        admin = _check_admin(
+        sample, id_, prev_ver = _create_sample_params(params)
+        as_admin, user = _get_admin_request_from_object(params, 'as_admin', 'as_user')
+        _check_admin(
             self._user_lookup, ctx[_CTX_TOKEN], _AdminPermission.FULL,
             # pretty annoying to test ctx.log_info is working, do it manually
-            'create_sample', ctx.log_info, as_user=user, skip_check=not user)
+            'create_sample', ctx.log_info, as_user=user, skip_check=not as_admin)
         ret = self._samples.save_sample(
-            s, user if admin else _UserID(ctx[_CTX_USER]), id_, pv)
+            sample, user if user else _UserID(ctx[_CTX_USER]), id_, prev_ver, as_admin=as_admin)
         address = {'id': str(ret[0]), 'version': ret[1]}
         #END create_sample
 
@@ -303,7 +309,6 @@ Note that usage of the administration flags will be logged by the service.
             'replace_sample_acls', ctx.log_info, skip_check=not params.get('as_admin'))
         self._samples.replace_sample_acls(id_, _UserID(ctx[_CTX_USER]), acls, as_admin=admin)
         #END replace_sample_acls
-        pass
 
     def get_metadata_key_static_metadata(self, ctx, params):
         """
@@ -386,20 +391,18 @@ Note that usage of the administration flags will be logged by the service.
         # ctx is the context object
         #BEGIN create_data_link
         duid, sna, update = _create_data_link_params(params)
-        user = _get_user_from_object(params, 'as_user')
-        as_admin = bool(params.get('as_admin'))
+        as_admin, user = _get_admin_request_from_object(params, 'as_admin', 'as_user')
         _check_admin(
             self._user_lookup, ctx[_CTX_TOKEN], _AdminPermission.FULL,
             # pretty annoying to test ctx.log_info is working, do it manually
             'create_data_link', ctx.log_info, as_user=user, skip_check=not as_admin)
         self._samples.create_data_link(
-            user if as_admin and user else _UserID(ctx[_CTX_USER]),
+            user if user else _UserID(ctx[_CTX_USER]),
             duid,
             sna,
             update,
             as_admin=as_admin)
         #END create_data_link
-        pass
 
     def expire_data_link(self, ctx, params):
         """
@@ -410,22 +413,35 @@ Note that usage of the administration flags will be logged by the service.
            (expire_data_link parameters. upa - the workspace upa of the
            object from which the link originates. dataid - the dataid, if
            any, of the data within the object from which the link originates.
-           Omit for links where the link is from the entire object.) ->
-           structure: parameter "upa" of type "ws_upa" (A KBase Workspace
-           service Unique Permanent Address (UPA). E.g. 5/6/7 where 5 is the
-           workspace ID, 6 the object ID, and 7 the object version.),
-           parameter "dataid" of type "data_id" (An id for a unit of data
-           within a KBase Workspace object. A single object may contain many
-           data units. A dataid is expected to be unique within a single
-           object. Must be less than 255 characters.)
+           Omit for links where the link is from the entire object. as_admin
+           - run the method as a service administrator. The user must have
+           full administration permissions. as_user - expire the link as a
+           different user. Ignored if as_admin is not true. Neither the
+           administrator nor the impersonated user need have permissions to
+           the link if a new version is saved.) -> structure: parameter "upa"
+           of type "ws_upa" (A KBase Workspace service Unique Permanent
+           Address (UPA). E.g. 5/6/7 where 5 is the workspace ID, 6 the
+           object ID, and 7 the object version.), parameter "dataid" of type
+           "data_id" (An id for a unit of data within a KBase Workspace
+           object. A single object may contain many data units. A dataid is
+           expected to be unique within a single object. Must be less than
+           255 characters.), parameter "as_admin" of type "boolean" (A
+           boolean value, 0 for false, 1 for true.), parameter "as_user" of
+           type "user" (A user's username.)
         """
         # ctx is the context object
         #BEGIN expire_data_link
         duid = _get_data_unit_id_from_object(params)
-        # TODO ADMIN admin mode
-        self._samples.expire_data_link(_UserID(ctx[_CTX_USER]), duid)
+        as_admin, user = _get_admin_request_from_object(params, 'as_admin', 'as_user')
+        _check_admin(
+            self._user_lookup, ctx[_CTX_TOKEN], _AdminPermission.FULL,
+            # pretty annoying to test ctx.log_info is working, do it manually
+            'expire_data_link', ctx.log_info, as_user=user, skip_check=not as_admin)
+        self._samples.expire_data_link(
+            user if user else _UserID(ctx[_CTX_USER]),
+            duid,
+            as_admin=as_admin)
         #END expire_data_link
-        pass
 
     def get_data_links_from_sample(self, ctx, params):
         """
@@ -437,48 +453,61 @@ Note that usage of the administration flags will be logged by the service.
            version - the sample version. effective_time - the effective time
            at which the query should be run - the default is the current
            time. Providing a time allows for reproducibility of previous
-           results.) -> structure: parameter "id" of type "sample_id" (A
-           Sample ID. Must be globally unique. Always assigned by the Sample
-           service.), parameter "version" of type "version" (The version of a
-           sample. Always > 0.), parameter "effective_time" of type
-           "timestamp" (A timestamp in epoch milliseconds.)
+           results. as_admin - run the method as a service administrator. The
+           user must have read administration permissions.) -> structure:
+           parameter "id" of type "sample_id" (A Sample ID. Must be globally
+           unique. Always assigned by the Sample service.), parameter
+           "version" of type "version" (The version of a sample. Always >
+           0.), parameter "effective_time" of type "timestamp" (A timestamp
+           in epoch milliseconds.), parameter "as_admin" of type "boolean" (A
+           boolean value, 0 for false, 1 for true.)
         :returns: instance of type "GetDataLinksFromSampleResults"
-           (get_data_links_from_sample results. links - the links.) ->
-           structure: parameter "links" of list of type "DataLink" (A data
-           link from a KBase workspace object to a sample. upa - the
-           workspace UPA of the linked object. dataid - the dataid of the
-           linked data, if any, within the object. If omitted the entire
-           object is linked to the sample. id - the sample id. version - the
-           sample version. node - the sample node. createdby - the user that
-           created the link. created - the time the link was created.
-           expiredby - the user that expired the link, if any. expired - the
-           time the link was expired, if at all.) -> structure: parameter
-           "upa" of type "ws_upa" (A KBase Workspace service Unique Permanent
-           Address (UPA). E.g. 5/6/7 where 5 is the workspace ID, 6 the
-           object ID, and 7 the object version.), parameter "dataid" of type
-           "data_id" (An id for a unit of data within a KBase Workspace
-           object. A single object may contain many data units. A dataid is
-           expected to be unique within a single object. Must be less than
-           255 characters.), parameter "id" of type "sample_id" (A Sample ID.
-           Must be globally unique. Always assigned by the Sample service.),
-           parameter "version" of type "version" (The version of a sample.
-           Always > 0.), parameter "node" of type "node_id" (A SampleNode ID.
-           Must be unique within a Sample and be less than 255 characters.),
-           parameter "createdby" of type "user" (A user's username.),
-           parameter "created" of type "timestamp" (A timestamp in epoch
-           milliseconds.), parameter "expiredby" of type "user" (A user's
-           username.), parameter "expired" of type "timestamp" (A timestamp
-           in epoch milliseconds.)
+           (get_data_links_from_sample results. links - the links.
+           effective_time - the time at which the query was run. This
+           timestamp, if saved, can be used when running the method again to
+           ensure reproducible results. Note that changes to workspace
+           permissions may cause results to change over time.) -> structure:
+           parameter "links" of list of type "DataLink" (A data link from a
+           KBase workspace object to a sample. upa - the workspace UPA of the
+           linked object. dataid - the dataid of the linked data, if any,
+           within the object. If omitted the entire object is linked to the
+           sample. id - the sample id. version - the sample version. node -
+           the sample node. createdby - the user that created the link.
+           created - the time the link was created. expiredby - the user that
+           expired the link, if any. expired - the time the link was expired,
+           if at all.) -> structure: parameter "upa" of type "ws_upa" (A
+           KBase Workspace service Unique Permanent Address (UPA). E.g. 5/6/7
+           where 5 is the workspace ID, 6 the object ID, and 7 the object
+           version.), parameter "dataid" of type "data_id" (An id for a unit
+           of data within a KBase Workspace object. A single object may
+           contain many data units. A dataid is expected to be unique within
+           a single object. Must be less than 255 characters.), parameter
+           "id" of type "sample_id" (A Sample ID. Must be globally unique.
+           Always assigned by the Sample service.), parameter "version" of
+           type "version" (The version of a sample. Always > 0.), parameter
+           "node" of type "node_id" (A SampleNode ID. Must be unique within a
+           Sample and be less than 255 characters.), parameter "createdby" of
+           type "user" (A user's username.), parameter "created" of type
+           "timestamp" (A timestamp in epoch milliseconds.), parameter
+           "expiredby" of type "user" (A user's username.), parameter
+           "expired" of type "timestamp" (A timestamp in epoch
+           milliseconds.), parameter "effective_time" of type "timestamp" (A
+           timestamp in epoch milliseconds.)
         """
         # ctx is the context object
         # return variables are: results
         #BEGIN get_data_links_from_sample
         sid, ver = _get_sample_address_from_object(params, version_required=True)
         dt = _get_datetime_from_epochmillseconds_in_object(params, 'effective_time')
-        # TODO ADMIN mode
-        links = self._samples.get_links_from_sample(
-            _UserID(ctx[_CTX_USER]), _SampleAddress(sid, ver), dt)
-        results = {'links': _links_to_dicts(links)}
+        admin = _check_admin(
+            self._user_lookup, ctx[_CTX_TOKEN], _AdminPermission.READ,
+            # pretty annoying to test ctx.log_info is working, do it manually
+            'get_data_links_from_sample', ctx.log_info, skip_check=not params.get('as_admin'))
+        links, ts = self._samples.get_links_from_sample(
+            _UserID(ctx[_CTX_USER]), _SampleAddress(sid, ver), dt, as_admin=admin)
+        results = {'links': _links_to_dicts(links),
+                   'effective_time': _datetime_to_epochmilliseconds(ts)
+                   }
         #END get_data_links_from_sample
 
         # At some point might do deeper type checking...
@@ -496,47 +525,60 @@ Note that usage of the administration flags will be logged by the service.
            (get_data_links_from_data parameters. upa - the data UPA.
            effective_time - the effective time at which the query should be
            run - the default is the current time. Providing a time allows for
-           reproducibility of previous results.) -> structure: parameter
-           "upa" of type "ws_upa" (A KBase Workspace service Unique Permanent
-           Address (UPA). E.g. 5/6/7 where 5 is the workspace ID, 6 the
-           object ID, and 7 the object version.), parameter "effective_time"
-           of type "timestamp" (A timestamp in epoch milliseconds.)
+           reproducibility of previous results. as_admin - run the method as
+           a service administrator. The user must have read administration
+           permissions.) -> structure: parameter "upa" of type "ws_upa" (A
+           KBase Workspace service Unique Permanent Address (UPA). E.g. 5/6/7
+           where 5 is the workspace ID, 6 the object ID, and 7 the object
+           version.), parameter "effective_time" of type "timestamp" (A
+           timestamp in epoch milliseconds.), parameter "as_admin" of type
+           "boolean" (A boolean value, 0 for false, 1 for true.)
         :returns: instance of type "GetDataLinksFromDataResults"
-           (get_data_links_from_data results. links - the links.) ->
-           structure: parameter "links" of list of type "DataLink" (A data
-           link from a KBase workspace object to a sample. upa - the
-           workspace UPA of the linked object. dataid - the dataid of the
-           linked data, if any, within the object. If omitted the entire
-           object is linked to the sample. id - the sample id. version - the
-           sample version. node - the sample node. createdby - the user that
-           created the link. created - the time the link was created.
-           expiredby - the user that expired the link, if any. expired - the
-           time the link was expired, if at all.) -> structure: parameter
-           "upa" of type "ws_upa" (A KBase Workspace service Unique Permanent
-           Address (UPA). E.g. 5/6/7 where 5 is the workspace ID, 6 the
-           object ID, and 7 the object version.), parameter "dataid" of type
-           "data_id" (An id for a unit of data within a KBase Workspace
-           object. A single object may contain many data units. A dataid is
-           expected to be unique within a single object. Must be less than
-           255 characters.), parameter "id" of type "sample_id" (A Sample ID.
-           Must be globally unique. Always assigned by the Sample service.),
-           parameter "version" of type "version" (The version of a sample.
-           Always > 0.), parameter "node" of type "node_id" (A SampleNode ID.
-           Must be unique within a Sample and be less than 255 characters.),
-           parameter "createdby" of type "user" (A user's username.),
-           parameter "created" of type "timestamp" (A timestamp in epoch
-           milliseconds.), parameter "expiredby" of type "user" (A user's
-           username.), parameter "expired" of type "timestamp" (A timestamp
-           in epoch milliseconds.)
+           (get_data_links_from_data results. links - the links.
+           effective_time - the time at which the query was run. This
+           timestamp, if saved, can be used when running the method again to
+           ensure reproducible results.) -> structure: parameter "links" of
+           list of type "DataLink" (A data link from a KBase workspace object
+           to a sample. upa - the workspace UPA of the linked object. dataid
+           - the dataid of the linked data, if any, within the object. If
+           omitted the entire object is linked to the sample. id - the sample
+           id. version - the sample version. node - the sample node.
+           createdby - the user that created the link. created - the time the
+           link was created. expiredby - the user that expired the link, if
+           any. expired - the time the link was expired, if at all.) ->
+           structure: parameter "upa" of type "ws_upa" (A KBase Workspace
+           service Unique Permanent Address (UPA). E.g. 5/6/7 where 5 is the
+           workspace ID, 6 the object ID, and 7 the object version.),
+           parameter "dataid" of type "data_id" (An id for a unit of data
+           within a KBase Workspace object. A single object may contain many
+           data units. A dataid is expected to be unique within a single
+           object. Must be less than 255 characters.), parameter "id" of type
+           "sample_id" (A Sample ID. Must be globally unique. Always assigned
+           by the Sample service.), parameter "version" of type "version"
+           (The version of a sample. Always > 0.), parameter "node" of type
+           "node_id" (A SampleNode ID. Must be unique within a Sample and be
+           less than 255 characters.), parameter "createdby" of type "user"
+           (A user's username.), parameter "created" of type "timestamp" (A
+           timestamp in epoch milliseconds.), parameter "expiredby" of type
+           "user" (A user's username.), parameter "expired" of type
+           "timestamp" (A timestamp in epoch milliseconds.), parameter
+           "effective_time" of type "timestamp" (A timestamp in epoch
+           milliseconds.)
         """
         # ctx is the context object
         # return variables are: results
         #BEGIN get_data_links_from_data
         upa = _get_upa_from_object(params)
         dt = _get_datetime_from_epochmillseconds_in_object(params, 'effective_time')
-        # TODO ADMIN mode
-        links = self._samples.get_links_from_data(_UserID(ctx[_CTX_USER]), upa, dt)
-        results = {'links': _links_to_dicts(links)}
+        admin = _check_admin(
+            self._user_lookup, ctx[_CTX_TOKEN], _AdminPermission.READ,
+            # pretty annoying to test ctx.log_info is working, do it manually
+            'get_data_links_from_data', ctx.log_info, skip_check=not params.get('as_admin'))
+        links, ts = self._samples.get_links_from_data(
+            _UserID(ctx[_CTX_USER]), upa, dt, as_admin=admin)
+        results = {'links': _links_to_dicts(links),
+                   'effective_time': _datetime_to_epochmilliseconds(ts)
+                   }
         #END get_data_links_from_data
 
         # At some point might do deeper type checking...
@@ -631,6 +673,8 @@ Note that usage of the administration flags will be logged by the service.
                      'message': "",
                      'version': self.VERSION,
                      'git_url': self.GIT_URL,
-                     'git_commit_hash': self.GIT_COMMIT_HASH}
+                     'git_commit_hash': self.GIT_COMMIT_HASH,
+                     'servertime': _datetime_to_epochmilliseconds(_datetime.datetime.now(
+                         tz=_datetime.timezone.utc))}
         #END_STATUS
         return [returnVal]

@@ -130,12 +130,16 @@ module SampleService {
         prior_version - if non-null, ensures that no other sample version is saved between
             prior_version and the version that is created by this save. If this is not the case,
             the sample will fail to save.
-        as_user - save the sample as a different user. The actual user must have full
+        as_admin - run the method as a service administrator. The user must have full
             administration permissions.
+        as_user - create the sample as a different user. Ignored if as_admin is not true. Neither
+            the administrator nor the impersonated user need have permissions to the sample if a
+            new version is saved.
      */
     typedef structure {
         Sample sample;
         int prior_version;
+        boolean as_admin;
         user as_user;
     } CreateSampleParams;
 
@@ -267,10 +271,17 @@ module SampleService {
         upa - the workspace upa of the object from which the link originates.
         dataid - the dataid, if any, of the data within the object from which the link originates.
             Omit for links where the link is from the entire object.
+        as_admin - run the method as a service administrator. The user must have full
+            administration permissions.
+        as_user - expire the link as a different user. Ignored if as_admin is not true. Neither
+            the administrator nor the impersonated user need have permissions to the link if a
+            new version is saved.
     */
     typedef structure {
         ws_upa upa;
         data_id dataid;
+        boolean as_admin;
+        user as_user;
     } ExpireDataLinkParams;
 
     /* Expire a link from a KBase Workspace object.
@@ -286,11 +297,14 @@ module SampleService {
         version - the sample version.
         effective_time - the effective time at which the query should be run - the default is
             the current time. Providing a time allows for reproducibility of previous results.
+        as_admin - run the method as a service administrator. The user must have read
+            administration permissions.
     */
     typedef structure {
         sample_id id;
         version version;
         timestamp effective_time;
+        boolean as_admin;
     } GetDataLinksFromSampleParams;
 
     /* A data link from a KBase workspace object to a sample.
@@ -321,9 +335,13 @@ module SampleService {
     /* get_data_links_from_sample results.
 
         links - the links.
+        effective_time - the time at which the query was run. This timestamp, if saved, can be
+            used when running the method again to ensure reproducible results. Note that changes
+            to workspace permissions may cause results to change over time.
     */
     typedef structure {
         list<DataLink> links;
+        timestamp effective_time;
     } GetDataLinksFromSampleResults;
 
     /* Get data links to Workspace objects originating from a sample.
@@ -339,18 +357,24 @@ module SampleService {
         upa - the data UPA.
         effective_time - the effective time at which the query should be run - the default is
             the current time. Providing a time allows for reproducibility of previous results.
+        as_admin - run the method as a service administrator. The user must have read
+            administration permissions.
     */
     typedef structure {
         ws_upa upa;
         timestamp effective_time;
+        boolean as_admin;
     } GetDataLinksFromDataParams;
 
     /* get_data_links_from_data results.
 
         links - the links.
+        effective_time - the time at which the query was run. This timestamp, if saved, can be
+            used when running the method again to ensure reproducible results.
     */
     typedef structure {
         list<DataLink> links;
+        timestamp effective_time;
     } GetDataLinksFromDataResults;
 
     /* Get data links to samples originating from Workspace data.

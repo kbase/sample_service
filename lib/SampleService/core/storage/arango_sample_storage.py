@@ -68,10 +68,10 @@ An ArangoDB based storage system for the Sample service.
 import arango as _arango
 import datetime
 import hashlib as _hashlib
-import uuid as _uuid
+import uuid as _uuid  # lgtm [py/import-and-import-from]
 from uuid import UUID
 from collections import defaultdict
-from typing import List, Tuple, Callable, cast as _cast, Optional as _Optional
+from typing import List, Tuple, Callable, cast as _cast, Optional
 from typing import Dict as _Dict, Any as _Any
 
 from apscheduler.schedulers.background import BackgroundScheduler as _BackgroundScheduler
@@ -375,7 +375,6 @@ class ArangoSampleStorage:
         :returns: True if the sample saved successfully, False if the same ID already exists.
         :raises SampleStorageError: if the sample fails to save.
         '''
-        # TODO think about user name a bit. Make a class?
         _not_falsy(sample, 'sample')
         if self._get_sample_doc(sample.id, exception=False):
             return False  # bail early
@@ -631,7 +630,7 @@ class ArangoSampleStorage:
             UUID(doc[_FLD_ID]), UserID(verdoc[_FLD_USER]), nodes, dt, verdoc[_FLD_NAME], version)
 
     def _get_sample_and_version_doc(
-            self, id_: UUID, version: _Optional[int] = None) -> Tuple[dict, dict, int]:
+            self, id_: UUID, version: Optional[int] = None) -> Tuple[dict, dict, int]:
         doc, uuidversion, version = self._get_sample_doc_and_versions(id_, version)
         verdoc = self._get_version_doc(id_, uuidversion)
         if verdoc[_FLD_VER] == _VAL_NO_VER:
@@ -642,7 +641,7 @@ class ArangoSampleStorage:
         return (doc, verdoc, version)
 
     def _get_sample_doc_and_versions(
-            self, id_: UUID, version: _Optional[int] = None) -> Tuple[dict, UUID, int]:
+            self, id_: UUID, version: Optional[int] = None) -> Tuple[dict, UUID, int]:
         doc = _cast(dict, self._get_sample_doc(id_))
         maxver = len(doc[_FLD_VERSIONS])
         version = version if version else maxver
@@ -706,7 +705,7 @@ class ArangoSampleStorage:
         nodes = [index_to_node[i] for i in range(len(index_to_node))]
         return nodes
 
-    def _get_sample_doc(self, id_: UUID, exception: bool = True) -> _Optional[dict]:
+    def _get_sample_doc(self, id_: UUID, exception: bool = True) -> Optional[dict]:
         doc = self._get_doc(self._col_sample, str(_not_falsy(id_, 'id_')))
         if not doc:
             if exception:
@@ -714,7 +713,7 @@ class ArangoSampleStorage:
             return None
         return doc
 
-    def _get_doc(self, col, id_: str) -> _Optional[dict]:
+    def _get_doc(self, col, id_: str) -> Optional[dict]:
         try:
             return col.get(id_)
         except _arango.exceptions.DocumentGetError as e:  # this is a pain to test
@@ -811,9 +810,6 @@ class ArangoSampleStorage:
         :raises TooManyDataLinksError: if there are too many links from the sample version or
             the workspace object version.
         '''
-        # TODO DATALINK notes re listing expired links - not scalable - or is it?
-        # index on endpoint and creation time, page by creation time
-
         # may want to link non-ws data at some point, would need a data source ID? YAGNI for now
 
         # Using the REST streaming api for the transaction. Might be faster with javascript
@@ -884,6 +880,7 @@ class ArangoSampleStorage:
                     # of extant links won't change
                     # Could support starting at a node later
                     self._check_link_count_from_sample_ver(tdb, samplever, link)
+                self._insert(tdlc, oldlinkdoc)
             else:
                 # might be able to get rid of these limits if it turns out the link queries
                 # can be done without a traversal, which means the links can be looked up with
@@ -892,8 +889,6 @@ class ArangoSampleStorage:
                 self._check_link_count_from_ws_object(tdb, link)
                 self._check_link_count_from_sample_ver(tdb, samplever, link)
 
-            if oldlinkdoc:
-                self._insert(tdlc, oldlinkdoc)
             ldoc = self._create_link_doc(link, samplever)
             self._insert(tdlc, ldoc, upsert=bool(oldlinkdoc))
             # since transaction is exclusive write, conflicts can't happen
@@ -929,7 +924,7 @@ class ArangoSampleStorage:
             db,
             upa: UPA,
             created: datetime.datetime,
-            expired: _Optional[datetime.datetime]):
+            expired: Optional[datetime.datetime]):
         wsc = self._count_links(
             db,
             f'''
@@ -954,7 +949,7 @@ class ArangoSampleStorage:
             db,
             version: UUID,
             created: datetime.datetime,
-            expired: _Optional[datetime.datetime]):
+            expired: Optional[datetime.datetime]):
         sv = self._count_links(
             db,
             f'''
@@ -967,7 +962,7 @@ class ArangoSampleStorage:
     def _count_links(self, db, filters: str, bind_vars, created, expired):
         bind_vars['@col'] = self._col_data_link.name
         bind_vars['created'] = created.timestamp()
-        bind_vars['expired'] = expired = expired.timestamp() if expired else _ARANGO_MAX_INTEGER
+        bind_vars['expired'] = expired.timestamp() if expired else _ARANGO_MAX_INTEGER
         # might need to include created / expired in compound indexes if we get a ton of expired
         # links. Might not work in a NOT though. Alternate formulation is
         # (d.creatd >= @created AND d.created <= @expired) OR
@@ -1194,13 +1189,14 @@ class ArangoSampleStorage:
     def get_links_from_sample(
             self,
             sample: SampleAddress,
-            readable_wsids: List[int],
+            readable_wsids: Optional[List[int]],
             timestamp: datetime.datetime) -> List[DataLink]:
         '''
         Get the links from a sample at a particular time.
 
         :param sample: the sample of interest.
         :param readable_wsids: IDs of workspaces for which the user has read permissions.
+            Pass None to return links to objects in all workspaces.
         :param timestamp: the time to use to determine which links are active.
         :returns: a list of links.
         :raises NoSuchSampleError: if the sample does not exist.
@@ -1209,26 +1205,29 @@ class ArangoSampleStorage:
         # may want to make this work on non-ws objects at some point. YAGNI for now.
         _not_falsy(sample, 'sample')
         _check_timestamp(timestamp, 'timestamp')
-        _not_falsy_in_iterable(readable_wsids, 'readable_wsids')
-        if not readable_wsids:
+        _not_falsy_in_iterable(readable_wsids, 'readable_wsids', allow_none=True)
+        if readable_wsids is not None and not readable_wsids:
             return []
         # need to get the version doc to ensure the documents have been updated appropriately
         # as well as getting the uuid version, see comments at beginning of file
         # note that testing version updating has been done for at least 2 other methods
         # the tests are not repeated here
         _, versiondoc, _ = self._get_sample_and_version_doc(sample.sampleid, sample.version)
+        bind_vars = {'@col': self._col_data_link.name,
+                     'samplever': versiondoc[_FLD_UUID_VER],
+                     'ts': timestamp.timestamp()}
+        wsidfilter = ''
+        if readable_wsids:
+            bind_vars['wsids'] = readable_wsids
+            wsidfilter = f'FILTER d.{_FLD_LINK_WORKSPACE_ID} IN @wsids'
         q = f'''
             FOR d in @@col
                 FILTER d.{_FLD_LINK_SAMPLE_UUID_VERSION} == @samplever
-                FILTER d.{_FLD_LINK_WORKSPACE_ID} IN @wsids
+                {wsidfilter}
                 FILTER d.{_FLD_LINK_CREATED} <= @ts
                 FILTER d.{_FLD_LINK_EXPIRED} >= @ts
                 RETURN d
             '''
-        bind_vars = {'@col': self._col_data_link.name,
-                     'wsids': readable_wsids,
-                     'samplever': versiondoc[_FLD_UUID_VER],
-                     'ts': timestamp.timestamp()}
         # may need an index on version + created and expired? Assume for now links aren't
         # expired very often.
         # may also want a sample ver / wsid index? Max 10k items per version though, and

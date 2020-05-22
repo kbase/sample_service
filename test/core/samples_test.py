@@ -67,11 +67,11 @@ def _init_fail(storage, lookup, meta, ws, now, uuid_gen, expected):
 
 
 def test_save_sample():
-    _save_sample_with_name(None)
-    _save_sample_with_name('bar')
+    _save_sample_with_name(None, True)
+    _save_sample_with_name('bar', False)
 
 
-def _save_sample_with_name(name):
+def _save_sample_with_name(name, as_admin):
     storage = create_autospec(ArangoSampleStorage, spec_set=True, instance=True)
     lu = create_autospec(KBaseUserLookup, spec_set=True, instance=True)
     meta = create_autospec(MetadataValidatorSet, spec_set=True, instance=True)
@@ -93,11 +93,12 @@ def _save_sample_with_name(name):
                 )
             ],
             name),
-        'auser') == (UUID('1234567890abcdef1234567890abcdef'), 1)
+        UserID('auser'),
+        as_admin=as_admin) == (UUID('1234567890abcdef1234567890abcdef'), 1)
 
     assert storage.save_sample.call_args_list == [
         ((SavedSample(UUID('1234567890abcdef1234567890abcdef'),
-                      'auser',
+                      UserID('auser'),
                       [SampleNode(
                           'foo',
                           controlled_metadata={'key1': {'val': 'foo'}, 'key2': {'val': 'bar'}},
@@ -162,6 +163,34 @@ def _save_sample_version_per_user(user: UserID, name, prior_version):
                       name
                       ),
           prior_version), {})]
+
+
+def test_save_sample_version_as_admin():
+    storage = create_autospec(ArangoSampleStorage, spec_set=True, instance=True)
+    lu = create_autospec(KBaseUserLookup, spec_set=True, instance=True)
+    meta = create_autospec(MetadataValidatorSet, spec_set=True, instance=True)
+    ws = create_autospec(WS, spec_set=True, instance=True)
+    s = Samples(storage, lu, meta, ws, now=nw,
+                uuid_gen=lambda: UUID('1234567890abcdef1234567890abcdef'))
+
+    storage.save_sample_version.return_value = 3
+
+    assert s.save_sample(
+        Sample([SampleNode('foo')], 'some sample'),
+        UserID('usera'),
+        UUID('1234567890abcdef1234567890abcdea'),
+        as_admin=True) == (UUID('1234567890abcdef1234567890abcdea'), 3)
+
+    assert meta.validate_metadata.call_args_list == [(({},), {})]
+
+    storage.save_sample_version.assert_called_once_with(
+        SavedSample(UUID('1234567890abcdef1234567890abcdea'),
+                    UserID('usera'),
+                    [SampleNode('foo')],
+                    datetime.datetime.fromtimestamp(6, tz=datetime.timezone.utc),
+                    'some sample'
+                    ),
+        None)
 
 
 def test_save_sample_fail_bad_args():
@@ -1058,7 +1087,7 @@ def _get_links_from_sample(user):
     storage.get_links_from_sample.return_value = [dl1, dl2]
 
     assert s.get_links_from_sample(
-        user, SampleAddress(UUID('1234567890abcdef1234567890abcdee'), 3)) == [dl1, dl2]
+        user, SampleAddress(UUID('1234567890abcdef1234567890abcdee'), 3)) == ([dl1, dl2], dt(6))
 
     storage.get_sample_acls.assert_called_once_with(UUID('1234567890abcdef1234567890abcdee'))
 
@@ -1067,6 +1096,43 @@ def _get_links_from_sample(user):
     storage.get_links_from_sample.assert_called_once_with(
         SampleAddress(UUID('1234567890abcdef1234567890abcdee'), 3),
         [7, 90, 106],
+        dt(6)
+    )
+
+
+def test_get_links_from_sample_as_admin():
+    storage = create_autospec(ArangoSampleStorage, spec_set=True, instance=True)
+    lu = create_autospec(KBaseUserLookup, spec_set=True, instance=True)
+    meta = create_autospec(MetadataValidatorSet, spec_set=True, instance=True)
+    ws = create_autospec(WS, spec_set=True, instance=True)
+    s = Samples(storage, lu, meta, ws, now=nw)
+
+    dl1 = DataLink(
+        UUID('1234567890abcdef1234567890abcdee'),
+        DataUnitID(UPA('1/1/1'), 'foo'),
+        SampleNodeAddress(SampleAddress(UUID('1234567890abcdef1234567890abcdee'), 3), 'mynode'),
+        dt(5),
+        UserID('userb')
+    )
+
+    dl2 = DataLink(
+        UUID('1234567890abcdef1234567890abcdec'),
+        DataUnitID(UPA('1/2/1'), 'foo'),
+        SampleNodeAddress(SampleAddress(UUID('1234567890abcdef1234567890abcdee'), 3), 'mynode3'),
+        dt(5),
+        UserID('usera')
+    )
+
+    storage.get_links_from_sample.return_value = [dl1, dl2]
+
+    assert s.get_links_from_sample(
+        UserID('whateva'),
+        SampleAddress(UUID('1234567890abcdef1234567890abcdee'), 3),
+        as_admin=True) == ([dl1, dl2], dt(6))
+
+    storage.get_links_from_sample.assert_called_once_with(
+        SampleAddress(UUID('1234567890abcdef1234567890abcdee'), 3),
+        None,
         dt(6)
     )
 
@@ -1095,7 +1161,7 @@ def test_get_links_from_sample_with_timestamp():
     assert s.get_links_from_sample(
         UserID('someuser'),
         SampleAddress(UUID('1234567890abcdef1234567890abcdee'), 3),
-        dt(40)) == [dl1]
+        dt(40)) == ([dl1], dt(40))
 
     storage.get_sample_acls.assert_called_once_with(UUID('1234567890abcdef1234567890abcdee'))
 
@@ -1181,7 +1247,7 @@ def test_get_links_from_data():
 
     storage.get_links_from_data.return_value = [dl1, dl2]
 
-    assert s.get_links_from_data(UserID('u1'), UPA('2/4/6')) == [dl1, dl2]
+    assert s.get_links_from_data(UserID('u1'), UPA('2/4/6')) == ([dl1, dl2], dt(6))
 
     ws.has_permission.assert_called_once_with(
         UserID('u1'), WorkspaceAccessType.READ, upa=UPA('2/4/6'))
@@ -1206,12 +1272,45 @@ def test_get_links_from_data_with_timestamp():
 
     storage.get_links_from_data.return_value = [dl1]
 
-    assert s.get_links_from_data(UserID('u1'), UPA('2/4/6'), timestamp=dt(700)) == [dl1]
+    assert s.get_links_from_data(UserID('u1'), UPA('2/4/6'), timestamp=dt(700)) == ([dl1], dt(700))
 
     ws.has_permission.assert_called_once_with(
         UserID('u1'), WorkspaceAccessType.READ, upa=UPA('2/4/6'))
 
     storage.get_links_from_data.assert_called_once_with(UPA('2/4/6'), dt(700))
+
+
+def test_get_links_from_data_as_admin():
+    storage = create_autospec(ArangoSampleStorage, spec_set=True, instance=True)
+    lu = create_autospec(KBaseUserLookup, spec_set=True, instance=True)
+    meta = create_autospec(MetadataValidatorSet, spec_set=True, instance=True)
+    ws = create_autospec(WS, spec_set=True, instance=True)
+    s = Samples(storage, lu, meta, ws, now=nw)
+
+    dl1 = DataLink(
+        UUID('1234567890abcdef1234567890abcdee'),
+        DataUnitID(UPA('2/4/6'), 'foo'),
+        SampleNodeAddress(SampleAddress(UUID('1234567890abcdef1234567890abcdea'), 3), 'mynode'),
+        dt(5),
+        UserID('userb')
+    )
+
+    dl2 = DataLink(
+        UUID('1234567890abcdef1234567890abcdec'),
+        DataUnitID(UPA('2/4/6')),
+        SampleNodeAddress(SampleAddress(UUID('1234567890abcdef1234567890abcdeb'), 1), 'mynode3'),
+        dt(4),
+        UserID('usera')
+    )
+
+    storage.get_links_from_data.return_value = [dl1, dl2]
+
+    assert s.get_links_from_data(UserID('u1'), UPA('2/4/6'), as_admin=True) == ([dl1, dl2], dt(6))
+
+    ws.has_permission.assert_called_once_with(
+        UserID('u1'), WorkspaceAccessType.NONE, upa=UPA('2/4/6'))
+
+    storage.get_links_from_data.assert_called_once_with(UPA('2/4/6'), dt(6))
 
 
 def test_get_links_from_data_fail_bad_args():
@@ -1388,6 +1487,32 @@ def _expire_data_link(user):
     storage.get_sample_acls.assert_called_once_with(sid)
     storage.expire_data_link.assert_called_once_with(
         dt(6), user, duid=DataUnitID(UPA('6/1/2'), 'foo'))
+
+
+def test_expire_data_link_as_admin():
+    storage = create_autospec(ArangoSampleStorage, spec_set=True, instance=True)
+    lu = create_autospec(KBaseUserLookup, spec_set=True, instance=True)
+    meta = create_autospec(MetadataValidatorSet, spec_set=True, instance=True)
+    ws = create_autospec(WS, spec_set=True, instance=True)
+    s = Samples(storage, lu, meta, ws, now=nw)
+
+    sid = UUID('1234567890abcdef1234567890abcdee')
+    storage.get_data_link.return_value = DataLink(
+        uuid.uuid4(),  # unused
+        DataUnitID(UPA('6/1/2'), 'foo'),
+        SampleNodeAddress(SampleAddress(sid, 3), 'node'),
+        dt(34),
+        UserID('userc')
+    )
+
+    s.expire_data_link(UserID('userf'), DataUnitID(UPA('6/1/2'), 'foo'), as_admin=True)
+
+    ws.has_permission.assert_called_once_with(
+        UserID('userf'), WorkspaceAccessType.NONE, workspace_id=6)
+
+    storage.get_data_link.assert_called_once_with(duid=DataUnitID(UPA('6/1/2'), 'foo'))
+    storage.expire_data_link.assert_called_once_with(
+        dt(6), UserID('userf'), duid=DataUnitID(UPA('6/1/2'), 'foo'))
 
 
 def test_expire_data_link_fail_bad_args():

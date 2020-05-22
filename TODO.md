@@ -8,20 +8,46 @@
 * List / find samples, possibly with...
 * Search integration
 * Logging
-* Link data to samples
 * Workspace @sample integration
   * If user has access to sample set, should have access to embedded samples (?)
 * ACLs:
+  * change ACLs with more granularity. Right now it's replace all
   * cache known good users
+  * cache user roles
   * remove self from acls (read/write)
+  * change sample owner
+    * Probably needs request / accept multistep flow
+* Cache workspace reponses
+* Stand alone validator CLI
+  * Validate without sending data to server
+* Versioning scheme for validator config
+* Kafka events for create sample version, update ACLS, create link, expire link
+  * get link by ID
+  * Tools to recreate events from the DB (backfill new external DBs, handle cases where
+    Kafka messages were lost)
+* Currently there's no way to list expired links other than setting an effective time on
+  the from-sample search and from-data search
+  * Maybe that's enough?
+    * No way to see the history of the links
+  * Listing expired links for a sample or data would require sort & paging, but it's not clear
+    how to page. The obvious fields are the creation / expiration date, but since those are
+    not necessarily unique, could return up to 10k documents. That makes paging smaller sizes
+    problematic/impossible.
+  * Listing expired links for a given sample *and* data is definitely possible since the links
+    don't overlap in time and can be sorted / paged by the creation date.
+      * Needs a sample/data/creation index.
+* Lots of opportunities for performance improvements if neccessary (bulk reads [and writes,
+  which are a lot harder])
 
 # Concerns:
 * Searching for samples could get very expensive based on the queries.
+  * Maybe just using a Lucene based solution is the way to go.
 * Searching for samples may be difficult as the metadata is embedded in the sample node
   document which limits the possible indexed queries to some extent.
   * Separating out the metadata documents means that traversals querying metadata would be
     more complicated or impossible.
-* Linking data may be complicated depending on the constraints and features we want
+  * Lucene as above
+* If we want more features or constraints, linking data may get more complicated than is already is
 
 # Testing
 * flake8 and bandit on test-sdkless (generated code is poopy)
@@ -29,7 +55,7 @@
   `__init__.py` files
 
 # Misc
-* The ~10 documents that have been written about this
+* The ~10 documents that have been written about samples
 
 # Obsolete
 * Make kb-sdk test run in travis
