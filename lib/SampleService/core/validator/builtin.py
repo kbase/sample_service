@@ -348,8 +348,11 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
             oac=OntologyAPI(srv_wiz_url)
             ret=oac.get_ancestors({"id": val, "ns": ontology})
             return list(map(lambda x: x["term"]["id"], ret["results"]))
-        except InvalidParamsError:
-            return []
+        except ServerError as err:
+            if 'InvalidParamsError' in err.message:
+                return []
+            else:
+                raise
     
     def ontology_has_ancestor_val(key: str, d1: Dict[str, PrimitiveType]) -> Optional[str]:
         for k, v in d1.items():
