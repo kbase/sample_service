@@ -22,7 +22,6 @@ from pint import DefinitionSyntaxError as _DefinitionSyntaxError
 from SampleService.core.core_types import PrimitiveType
 from installed_clients.OntologyAPIClient import OntologyAPI
 from installed_clients.baseclient import ServerError
-from pprint import pprint
 import os
 
 
@@ -351,8 +350,7 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
             ret=oac.get_ancestors({"id": val, "ns": ontology})
             return list(map(lambda x: x["term"]["id"], ret["results"]))
         except ServerError as err:
-            pprint(err)
-            if 'InvalidParamsError' in err.message:
+            if 'InvalidParamsError' in err.data:
                 return []
             else:
                 raise
