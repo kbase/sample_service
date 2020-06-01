@@ -351,7 +351,7 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
             return list(map(lambda x: x["term"]["id"], ret["results"]))
         except ServerError as err:
             if 'InvalidParamsError' in err.data:
-                return []
+                raise ValueError(f'ontology {onotology} is not found')
             else:
                 raise
     

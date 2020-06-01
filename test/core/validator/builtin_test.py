@@ -404,8 +404,15 @@ def test_ontology_has_ancestor_validate_fail():
         {'ontology': 'envo_ontology', 'ancestor_term':'ENVO:00010483'}, {'a': 'foo'}, 'Metadata value at key a does not have envo_ontology ancestor term ENVO:00010483')
     _ontology_has_ancestor_validate_fail(
         {'ontology': 'envo_ontology', 'ancestor_term':'bar'}, {'a': 'ENVO:00002041'}, 'Metadata value at key a does not have envo_ontology ancestor term bar')
-    _ontology_has_ancestor_validate_fail(
-        {'ontology': 'foo', 'ancestor_term':'ENVO:00010483'}, {'a': 'ENVO:00002041'}, 'Metadata value at key a does not have foo ancestor term ENVO:00010483')
 
 def _ontology_has_ancestor_validate_fail(cfg, meta, expected):
     assert builtin.ontology_has_ancestor(cfg)('key', meta) == expected
+
+def test_ontology_has_ancestor_validate_with_ontology_fail():
+    _ontology_has_ancestor_validate_with_ontology_fail(
+        {'ontology': 'foo', 'ancestor_term':'ENVO:00010483'}, {'a': 'ENVO:00002041'}, ValueError('ontology foo is not found'))
+
+def _ontology_has_ancestor_validate_with_ontology_fail(cfg, meta, expected):
+    with raises(Exception) as got:
+        builtin.ontology_has_ancestor(cfg)('key', meta)
+    assert_exception_correct(got.value, expected)
