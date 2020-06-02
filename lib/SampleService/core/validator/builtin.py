@@ -331,6 +331,11 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
     '''
     _check_unknown_keys(d, {'ontology', 'ancestor_term'})
 
+    if os.environ.get('KBASE_ENDPOINT') is None:
+        raise ValueError('KBASE_ENDPOINT is None')
+
+    srv_wiz_url=os.environ.get('KBASE_ENDPOINT').strip('/') + '/service_wizard'
+
     ontology = d.get('ontology')
     if not ontology:
         raise ValueError('ontology is a required paramter')
@@ -344,7 +349,6 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
         raise ValueError('ancestor_term must be a string')
 
     def _get_ontology_ancestors(ontology, val):
-        srv_wiz_url=os.environ.get('KBASE_ENDPOINT', 'https://ci.kbase.us/services').strip('/') + '/service_wizard'
         try:
             oac=OntologyAPI(srv_wiz_url)
             ret=oac.get_ancestors({"id": val, "ns": ontology})
