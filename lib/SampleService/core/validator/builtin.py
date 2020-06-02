@@ -331,10 +331,11 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
     '''
     _check_unknown_keys(d, {'ontology', 'ancestor_term'})
 
-    if os.environ.get('KBASE_ENDPOINT') is None:
+    endpoint=os.environ.get('KBASE_ENDPOINT')
+    if endpoint is None:
         raise ValueError('KBASE_ENDPOINT is None')
 
-    srv_wiz_url=os.environ.get('KBASE_ENDPOINT').strip('/') + '/service_wizard'
+    srv_wiz_url=endpoint.strip('/') + '/service_wizard'
 
     ontology = d.get('ontology')
     if not ontology:
