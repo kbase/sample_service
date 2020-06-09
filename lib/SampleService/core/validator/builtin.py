@@ -356,7 +356,7 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
         oac=OntologyAPI(srv_wiz_url)
         if oac.status().get('state') != 'OK':
             raise ValueError('the status of ontology api service is not ok')
-    except ConnectionError as err:
+    except:
         raise ValueError('failed connect to ontology api through kbase_endpoint')
 
 
