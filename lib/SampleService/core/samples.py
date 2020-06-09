@@ -21,6 +21,7 @@ from SampleService.core.errors import (
     NoSuchUserError as _NoSuchUserError,
     NoSuchLinkError as _NoSuchLinkError
 )
+from SampleService.core.notification import KafkaNotifier
 from SampleService.core.sample import Sample, SavedSample, SampleAddress, SampleNodeAddress
 from SampleService.core.user_lookup import KBaseUserLookup
 from SampleService.core import user_lookup as _user_lookup_mod
@@ -45,6 +46,8 @@ class Samples:
             user_lookup: KBaseUserLookup,  # make an interface? YAGNI
             metadata_validator: MetadataValidatorSet,
             workspace: WS,
+            # may want to support multiple notifiers. YAGNI for now
+            notifier: Optional[KafkaNotifier] = None,
             now: Callable[[], datetime.datetime] = lambda: datetime.datetime.now(
                 tz=datetime.timezone.utc),
             uuid_gen: Callable[[], UUID] = lambda: _uuid.uuid4()):
@@ -63,6 +66,7 @@ class Samples:
         self._user_lookup = _not_falsy(user_lookup, 'user_lookup')
         self._metaval = _not_falsy(metadata_validator, 'metadata_validator')
         self._ws = _not_falsy(workspace, 'workspace')
+        self._kafka = notifier  # can be None
         self._now = _not_falsy(now, 'now')
         self._uuid_gen = _not_falsy(uuid_gen, 'uuid_gen')
 
@@ -107,6 +111,8 @@ class Samples:
             # don't bother checking output since we created uuid
             self._storage.save_sample(swid)
             ver = 1
+        if self._kafka:
+            self._kafka.notify_new_sample_version(id_, ver)
         return (id_, ver)
 
     def _validate_metadata(self, sample: Sample):
@@ -230,12 +236,15 @@ class Samples:
                 raise ValueError(f'Failed setting ACLs after 5 attempts for sample {id_}')
             acls = self._storage.get_sample_acls(id_)
             self._check_perms(id_, user, _SampleAccessType.ADMIN, acls, as_admin=as_admin)
-            new_acls = SampleACL(acls.owner, new_acls.admin, new_acls.write, new_acls.read)
+            new_acls = SampleACL(
+                acls.owner, self._now(), new_acls.admin, new_acls.write, new_acls.read)
             try:
                 self._storage.replace_sample_acls(id_, new_acls)
                 count = -1
             except _OwnerChangedError:
                 count += 1
+        if self._kafka:
+            self._kafka.notify_sample_acl_change(id_)
 
     # TODO change owner. Probably needs a request/accept flow.
 
@@ -265,7 +274,7 @@ class Samples:
             duid: DataUnitID,
             sna: SampleNodeAddress,
             update: bool = False,
-            as_admin: bool = False):
+            as_admin: bool = False) -> DataLink:
         '''
         Create a link from a data unit to a sample. The user must have admin access to the sample,
         since linking data grants permissions: once linked, if a user
@@ -283,6 +292,7 @@ class Samples:
             If False and a link from the data unit already exists, link creation will fail.
         :param as_admin: allow link creation to proceed if user does not have
             appropriate permissions.
+        :returns: the new link.
         :raises UnauthorizedError: if the user does not have acceptable permissions.
         :raises NoSuchSampleError: if the sample does not exist.
         :raises NoSuchSampleVersionError: if the sample version does not exist.
@@ -300,7 +310,12 @@ class Samples:
         wsperm = _WorkspaceAccessType.NONE if as_admin else _WorkspaceAccessType.WRITE
         self._ws.has_permission(user, wsperm, upa=duid.upa)
         dl = DataLink(self._uuid_gen(), duid, sna, self._now(), user)
-        self._storage.create_data_link(dl, update=update)
+        expired_id = self._storage.create_data_link(dl, update=update)
+        if self._kafka:
+            self._kafka.notify_new_link(dl.id)
+            if expired_id:  # maybe make the notifier accept both notifications & send both?
+                self._kafka.notify_expired_link(expired_id)
+        return dl
 
     def expire_data_link(self, user: UserID, duid: DataUnitID, as_admin: bool = False) -> None:
         '''
@@ -328,7 +343,14 @@ class Samples:
         # UPA then they can get the link with the sample ID, so don't worry about it.
         self._check_perms(
             link.sample_node_address.sampleid, user, _SampleAccessType.ADMIN, as_admin=as_admin)
-        self._storage.expire_data_link(self._now(), user, duid=duid)
+        # Use the ID here to prevent a race condition expiring a new link to a different sample
+        # since the user may not have perms
+        # There's a chance the link could be expired between db fetch and update, but that
+        # takes millisecond precision and just means a funky error message occurs, so don't
+        # worry about it.
+        self._storage.expire_data_link(self._now(), user, id_=link.id)
+        if self._kafka:
+            self._kafka.notify_expired_link(link.id)
 
     def get_links_from_sample(
             self,
@@ -427,3 +449,16 @@ class Samples:
                 f'There is no link from UPA {upa} to sample {sample_address.sampleid}')
         # can't raise no sample error since a link exists
         return self._storage.get_sample(sample_address.sampleid, sample_address.version)
+
+    def get_data_link_admin(self, link_id: UUID) -> DataLink:
+        '''
+        This method is intended for admin use and should not be exposed in a public API.
+
+        Get a link by its ID. The link may be expired.
+
+        :param link_id: the link ID.
+        :returns: the link.
+        :raises NoSuchLinkError: if the link does not exist.
+        '''
+        # if we expose this to users need to add ACL checking. Don't see a use case ATM.
+        return self._storage.get_data_link(_not_falsy(link_id, 'link_id'))

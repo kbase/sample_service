@@ -53,7 +53,45 @@ You may find the answers to your questions in our [FAQ](https://kbase.github.io/
 
 The server has several startup parameters beyond the standard SDK-provided parameters
 that must be configured in the Catalog Service by a Catalog Service administrator in order
-for the service to run. These are documented in the `deploy.cfg` file. 
+for the service to run. These are documented in the `deploy.cfg` file.
+
+## Kafka Notification
+
+The server may be configured to send notifications on events to Kafka - see the `deploy.cfg` file
+for information. The events and their respective JSON message formats are:
+
+### New sample or sample version
+
+```
+{'event_type': 'NEW_SAMPLE',
+ 'sample_id': <sample ID>,
+ 'sample_ver': <sample version>
+ }
+```
+
+### Sample ACL change
+
+```
+{'event_type': 'ACL_CHANGE',
+ 'sample_id': <sample ID>
+ }
+```
+
+### New data link
+
+```
+{'event_type': 'NEW_LINK',
+ 'link_id': <link ID>
+ }
+```
+
+### Expired data link
+
+```
+{'event_type': 'EXPIRED_LINK',
+ 'link_id': <link ID>
+ }
+```
 
 # API Error codes
 
@@ -448,22 +486,3 @@ Ensures all values are integers or floats.
 * `gt`, `gte`, `lt`, and `lte` are respectively greater than, greater than or equal,
   less than, and less than or equal, and specify a range in which the number or numbers must exist.
   If `gt` or `lt` are specified, `gte` or `lte` cannot be specified, respectively, and vice versa.
-
-### ontology_has_ancestor
-
-Example configuration:
-```
-validators:
-    metadatakey:
-        validators:
-            - module: SampleService.core.validator.builtin
-              callable-builder: ontology_has_ancestor
-              parameters:
-                  ontology: 'envo_ontology'
-                  ancestor_term: 'ENVO:00010483'
-                  kbase_endpoint: 'https://kbase.us/services'
-```
-
-* `ontology` is the ontology that the meta value will be checked against.
-* `ancestor_term` is the ancestor ontology term that will be used to check whether meta value has such ancestor or not.   
-* `kbase_endpoint` is the url to kbase endpoint for getting OntologyAPI service.

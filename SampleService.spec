@@ -31,6 +31,11 @@ module SampleService {
     /* A Sample ID. Must be globally unique. Always assigned by the Sample service. */
     typedef string sample_id;
 
+    /* A link ID. Must be globally unique. Always assigned by the Sample service.
+        Typically only of use to service admins.
+     */
+    typedef string link_id;
+
     /* A sample name. Must be less than 255 characters. */
     typedef string sample_name;
 
@@ -259,12 +264,47 @@ module SampleService {
         user as_user;
     } CreateDataLinkParams;
 
+    /* A data link from a KBase workspace object to a sample.
+    
+        upa - the workspace UPA of the linked object.
+        dataid - the dataid of the linked data, if any, within the object. If omitted the
+            entire object is linked to the sample.
+        id - the sample id.
+        version - the sample version.
+        node - the sample node.
+        createdby - the user that created the link.
+        created - the time the link was created.
+        expiredby - the user that expired the link, if any.
+        expired - the time the link was expired, if at all.
+     */
+    typedef structure {
+        link_id linkid;
+        ws_upa upa;
+        data_id dataid;
+        sample_id id;
+        version version;
+        node_id node;
+        user createdby;
+        timestamp created;
+        user expiredby;
+        timestamp expired;
+    } DataLink;
+
+    /* create_data_link results.
+
+        new_link - the new link.
+     */
+    typedef structure {
+        DataLink new_link;
+    } CreateDataLinkResults;
+
     /* Create a link from a KBase Workspace object to a sample.
 
         The user must have admin permissions for the sample and write permissions for the
         Workspace object.
      */
-    funcdef create_data_link(CreateDataLinkParams params) returns() authentication required;
+    funcdef create_data_link(CreateDataLinkParams params) returns(CreateDataLinkResults results)
+        authentication required;
 
     /* expire_data_link parameters.
 
@@ -306,31 +346,6 @@ module SampleService {
         timestamp effective_time;
         boolean as_admin;
     } GetDataLinksFromSampleParams;
-
-    /* A data link from a KBase workspace object to a sample.
-    
-        upa - the workspace UPA of the linked object.
-        dataid - the dataid of the linked data, if any, within the object. If omitted the
-            entire object is linked to the sample.
-        id - the sample id.
-        version - the sample version.
-        node - the sample node.
-        createdby - the user that created the link.
-        created - the time the link was created.
-        expiredby - the user that expired the link, if any.
-        expired - the time the link was expired, if at all.
-     */
-    typedef structure {
-        ws_upa upa;
-        data_id dataid;
-        sample_id id;
-        version version;
-        node_id node;
-        user createdby;
-        timestamp created;
-        user expiredby;
-        timestamp expired;
-    } DataLink;
 
     /* get_data_links_from_sample results.
 
@@ -404,4 +419,16 @@ module SampleService {
     funcdef get_sample_via_data(GetSampleViaDataParams params) returns(Sample sample)
         authentication required;
 
+    /* get_data_link parameters.
+
+        linkid - the link ID.
+     */
+    typedef structure {
+        link_id linkid;
+    } GetDataLinkParams;
+
+    /* Get a link, expired or not, by its ID. This method requires read administration privileges
+       for the service.
+     */
+    funcdef get_data_link(GetDataLinkParams params) returns(DataLink link) authentication required;
 };

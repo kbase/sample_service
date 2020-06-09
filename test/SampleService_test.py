@@ -5,6 +5,7 @@
 # Tests of the auth user lookup and workspace wrapper code are at the bottom of the file.
 
 import datetime
+import json
 import os
 import tempfile
 import requests
@@ -15,8 +16,13 @@ from configparser import ConfigParser
 from pytest import fixture, raises
 from threading import Thread
 
+from kafka import KafkaConsumer
+from kafka.errors import NoBrokersAvailable
+
 from SampleService.SampleServiceImpl import SampleService
-from SampleService.core.errors import MissingParameterError, NoSuchWorkspaceDataError
+from SampleService.core.errors import (
+    MissingParameterError, NoSuchWorkspaceDataError, IllegalParameterError)
+from SampleService.core.notification import KafkaNotifier
 from SampleService.core.user_lookup import KBaseUserLookup, AdminPermission
 from SampleService.core.user_lookup import InvalidTokenError, InvalidUserError
 from SampleService.core.workspace import WS, WorkspaceAccessType, UPA
@@ -26,16 +32,21 @@ from SampleService.core.user import UserID
 from installed_clients.WorkspaceClient import Workspace as Workspace
 
 from core import test_utils
-from core.test_utils import assert_ms_epoch_close_to_now, assert_exception_correct
+from core.test_utils import (
+    assert_ms_epoch_close_to_now,
+    assert_exception_correct,
+    find_free_port
+)
 from arango_controller import ArangoController
 from mongo_controller import MongoController
 from workspace_controller import WorkspaceController
 from auth_controller import AuthController
+from kafka_controller import KafkaController
 
 # TODO should really test a start up for the case where the metadata validation config is not
 # supplied, but that's almost never going to be the case and the code is trivial, so YAGNI
 
-VER = '0.1.0-alpha13'
+VER = '0.1.0-alpha15'
 
 _AUTH_DB = 'test_auth_db'
 _WS_DB = 'test_ws_db'
@@ -71,13 +82,17 @@ USER3 = 'user3'
 TOKEN3 = None
 USER4 = 'user4'
 TOKEN4 = None
+USER5 = 'user5'
+TOKEN5 = None
 
 USER_NO_TOKEN1 = 'usernt1'
 USER_NO_TOKEN2 = 'usernt2'
 USER_NO_TOKEN3 = 'usernt3'
 
+KAFKA_TOPIC = 'sampleservice'
 
-def create_deploy_cfg(auth_port, arango_port, workspace_port):
+
+def create_deploy_cfg(auth_port, arango_port, workspace_port, kafka_port):
     cfg = ConfigParser()
     ss = 'SampleService'
     cfg.add_section(ss)
@@ -99,6 +114,9 @@ def create_deploy_cfg(auth_port, arango_port, workspace_port):
     cfg[ss]['workspace-url'] = f'http://localhost:{workspace_port}'
     cfg[ss]['workspace-read-admin-token'] = TOKEN_WS_READ_ADMIN
 
+    cfg[ss]['kafka-bootstrap-servers'] = f'localhost:{kafka_port}'
+    cfg[ss]['kafka-topic'] = KAFKA_TOPIC
+
     cfg[ss]['sample-collection'] = TEST_COL_SAMPLE
     cfg[ss]['version-collection'] = TEST_COL_VERSION
     cfg[ss]['version-edge-collection'] = TEST_COL_VER_EDGE
@@ -111,16 +129,16 @@ def create_deploy_cfg(auth_port, arango_port, workspace_port):
     metacfg = {
         'validators': {
             'foo': {'validators': [{'module': 'SampleService.core.validator.builtin',
-                                    'callable-builder': 'noop'
+                                    'callable_builder': 'noop'
                                     }],
                     'key_metadata': {'a': 'b', 'c': 'd'}
                     },
             'stringlentest': {'validators': [{'module': 'SampleService.core.validator.builtin',
-                                              'callable-builder': 'string',
+                                              'callable_builder': 'string',
                                               'parameters': {'max-len': 5}
                                               },
                                              {'module': 'SampleService.core.validator.builtin',
-                                              'callable-builder': 'string',
+                                              'callable_builder': 'string',
                                               'parameters': {'keys': 'spcky', 'max-len': 2}
                                               }],
                               'key_metadata': {'h': 'i', 'j': 'k'}
@@ -128,7 +146,7 @@ def create_deploy_cfg(auth_port, arango_port, workspace_port):
         },
         'prefix_validators': {
             'pre': {'validators': [{'module': 'core.config_test_vals',
-                                    'callable-builder': 'prefix_validator_test_builder',
+                                    'callable_builder': 'prefix_validator_test_builder',
                                     'parameters': {'fail_on_arg': 'fail_plz'}
                                     }],
                     'key_metadata': {'1': '2'}
@@ -177,6 +195,7 @@ def auth(mongo):
     global TOKEN2
     global TOKEN3
     global TOKEN4
+    global TOKEN5
     jd = test_utils.get_jars_dir()
     tempdir = test_utils.get_temp_dir()
     auth = AuthController(jd, f'localhost:{mongo.port}', _AUTH_DB, tempdir)
@@ -216,6 +235,10 @@ def auth(mongo):
 
     test_utils.create_auth_user(url, USER4, 'display4')
     TOKEN4 = test_utils.create_auth_login_token(url, USER4)
+
+    test_utils.create_auth_user(url, USER5, 'display4')
+    TOKEN5 = test_utils.create_auth_login_token(url, USER5)
+    test_utils.set_custom_roles(url, USER5, ['fulladmin2'])
 
     test_utils.create_auth_user(url, USER_NO_TOKEN1, 'displaynt1')
     test_utils.create_auth_user(url, USER_NO_TOKEN2, 'displaynt2')
@@ -303,12 +326,25 @@ def clear_db_and_recreate(arango):
 
 
 @fixture(scope='module')
-def service(auth, arango, workspace):
+def kafka():
+    kafka_bin_dir = test_utils.get_kafka_bin_dir()
+    tempdir = test_utils.get_temp_dir()
+    kc = KafkaController(kafka_bin_dir, tempdir)
+    print('running kafka on port {} in dir {}'.format(kc.port, kc.temp_dir))
+    yield kc
+
+    del_temp = test_utils.get_delete_temp_files()
+    print('shutting down kafka, delete_temp_files={}'.format(del_temp))
+    kc.destroy(del_temp, dump_logs_to_stdout=False)
+
+
+@fixture(scope='module')
+def service(auth, arango, workspace, kafka):
     portint = test_utils.find_free_port()
     clear_db_and_recreate(arango)
     # this is completely stupid. The state is calculated on import so there's no way to
     # test the state creation normally.
-    cfgpath = create_deploy_cfg(auth.port, arango.port, workspace.port)
+    cfgpath = create_deploy_cfg(auth.port, arango.port, workspace.port, kafka.port)
     os.environ['KB_DEPLOYMENT_CONFIG'] = cfgpath
     from SampleService import SampleServiceServer
     Thread(target=SampleServiceServer.start_server, kwargs={'port': portint}, daemon=True).start()
@@ -323,9 +359,11 @@ def service(auth, arango, workspace):
 
 
 @fixture
-def sample_port(service, arango, workspace):
+def sample_port(service, arango, workspace, kafka):
     clear_db_and_recreate(arango)
     workspace.clear_db()
+    # _clear_kafka_messages(kafka)  # too expensive to run after every test
+    # kafka.clear_all_topics()  # too expensive to run after every test
     yield service
 
 
@@ -368,6 +406,9 @@ def test_init_fail():
     cfg['workspace-url'] = 'crap'
     init_fail(cfg, MissingParameterError('config param workspace-read-admin-token'))
     cfg['workspace-read-admin-token'] = 'crap'
+    cfg['kafka-bootstrap-servers'] = 'crap'
+    init_fail(cfg, MissingParameterError('config param kafka-topic'))
+    cfg['kafka-topic'] = 'crap'
     # get_validators is tested elsewhere, just make sure it'll error out
     cfg['metadata-validator-config-url'] = 'https://kbase.us/services'
     init_fail(cfg, ValueError(
@@ -402,10 +443,47 @@ def get_authorized_headers(token):
     return {'authorization': token, 'accept': 'application/json'}
 
 
-def test_create_and_get_sample_with_version(sample_port):
+def _check_kafka_messages(kafka, expected_msgs, topic=KAFKA_TOPIC, print_res=False):
+    kc = KafkaConsumer(
+        topic,
+        bootstrap_servers=f'localhost:{kafka.port}',
+        auto_offset_reset='earliest',
+        group_id='foo')  # quiets warnings
+
+    try:
+        res = kc.poll(timeout_ms=2000)  # 1s not enough? Seems like a lot
+        if print_res:
+            print(res)
+        assert len(res) == 1
+        assert next(iter(res.keys())).topic == topic
+        records = next(iter(res.values()))
+        assert len(records) == len(expected_msgs)
+        for i, r in enumerate(records):
+            assert json.loads(r.value) == expected_msgs[i]
+        # Need to commit here? doesn't seem like it
+    finally:
+        kc.close()
+
+
+def _clear_kafka_messages(kafka, topic=KAFKA_TOPIC):
+    kc = KafkaConsumer(
+        topic,
+        bootstrap_servers=f'localhost:{kafka.port}',
+        auto_offset_reset='earliest',
+        group_id='foo')  # quiets warnings
+
+    try:
+        kc.poll(timeout_ms=2000)  # 1s not enough? Seems like a lot
+        # Need to commit here? doesn't seem like it
+    finally:
+        kc.close()
+
+
+def test_create_and_get_sample_with_version(sample_port, kafka):
+    _clear_kafka_messages(kafka)
     url = f'http://localhost:{sample_port}'
 
-    # verison 1
+    # version 1
     ret = requests.post(url, headers=get_authorized_headers(TOKEN1), json={
         'method': 'SampleService.create_sample',
         'version': '1.1',
@@ -502,6 +580,209 @@ def test_create_and_get_sample_with_version(sample_port):
                        'type': 'BioReplicate',
                        'meta_controlled': {'foo': {'bar': 'bat'}},
                        'meta_user': {'a': {'b': 'd'}}}]
+    }
+
+    _check_kafka_messages(
+        kafka,
+        [
+            {'event_type': 'NEW_SAMPLE', 'sample_id': id_, 'sample_ver': 1},
+            {'event_type': 'NEW_SAMPLE', 'sample_id': id_, 'sample_ver': 2}
+        ])
+
+
+def test_create_sample_as_admin(sample_port):
+    _create_sample_as_admin(sample_port, None, TOKEN2, USER2)
+
+
+def test_create_sample_as_admin_impersonate_user(sample_port):
+    _create_sample_as_admin(sample_port, '     ' + USER4 + '      ', TOKEN4, USER4)
+
+
+def _create_sample_as_admin(sample_port, as_user, get_token, expected_user):
+    url = f'http://localhost:{sample_port}'
+
+    # verison 1
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN2), json={
+        'method': 'SampleService.create_sample',
+        'version': '1.1',
+        'id': '67',
+        'params': [{
+            'sample': {'name': 'mysample',
+                       'node_tree': [{'id': 'root',
+                                      'type': 'BioReplicate',
+                                      'meta_controlled': {'foo': {'bar': 'baz'}
+                                                          },
+                                      'meta_user': {'a': {'b': 'c'}}
+                                      }
+                                     ]
+                       },
+            'as_admin': 1,
+            'as_user': as_user
+        }]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    assert ret.json()['result'][0]['version'] == 1
+    id_ = ret.json()['result'][0]['id']
+
+    # get
+    ret = requests.post(url, headers=get_authorized_headers(get_token), json={
+        'method': 'SampleService.get_sample',
+        'version': '1.1',
+        'id': '42',
+        'params': [{'id': id_, 'version': 1}]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    j = ret.json()['result'][0]
+    assert_ms_epoch_close_to_now(j['save_date'])
+    del j['save_date']
+    assert j == {
+        'id': id_,
+        'version': 1,
+        'user': expected_user,
+        'name': 'mysample',
+        'node_tree': [{'id': 'root',
+                       'parent': None,
+                       'type': 'BioReplicate',
+                       'meta_controlled': {'foo': {'bar': 'baz'}
+                                           },
+                       'meta_user': {'a': {'b': 'c'}}}]
+    }
+
+
+def test_create_sample_version_as_admin(sample_port):
+    _create_sample_version_as_admin(sample_port, None, USER2)
+
+
+def test_create_sample_version_as_admin_impersonate_user(sample_port):
+    _create_sample_version_as_admin(sample_port, USER3, USER3)
+
+
+def _create_sample_version_as_admin(sample_port, as_user, expected_user):
+    url = f'http://localhost:{sample_port}'
+
+    # verison 1
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN1), json={
+        'method': 'SampleService.create_sample',
+        'version': '1.1',
+        'id': '67',
+        'params': [{
+            'sample': {'name': 'mysample',
+                       'node_tree': [{'id': 'root',
+                                      'type': 'BioReplicate',
+                                      'meta_controlled': {'foo': {'bar': 'baz'},
+                                                          'stringlentest': {'foooo': 'barrr',
+                                                                            'spcky': 'fa'},
+                                                          'prefixed': {'safe': 'args'}
+                                                          },
+                                      'meta_user': {'a': {'b': 'c'}}
+                                      }
+                                     ]
+                       }
+        }]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    assert ret.json()['result'][0]['version'] == 1
+    id_ = ret.json()['result'][0]['id']
+
+    # version 2
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN2), json={
+        'method': 'SampleService.create_sample',
+        'version': '1.1',
+        'id': '68',
+        'params': [{
+            'sample': {'name': 'mysample2',
+                       'id': id_,
+                       'node_tree': [{'id': 'root2',
+                                      'type': 'BioReplicate',
+                                      'meta_controlled': {'foo': {'bar': 'bat'}},
+                                      'meta_user': {'a': {'b': 'd'}}
+                                      }
+                                     ]
+                       },
+            'as_admin': 1,
+            'as_user': as_user
+        }]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    assert ret.json()['result'][0]['version'] == 2
+
+    # get version 2
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN1), json={
+        'method': 'SampleService.get_sample',
+        'version': '1.1',
+        'id': '43',
+        'params': [{'id': id_}]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    j = ret.json()['result'][0]
+    assert_ms_epoch_close_to_now(j['save_date'])
+    del j['save_date']
+    assert j == {
+        'id': id_,
+        'version': 2,
+        'user': expected_user,
+        'name': 'mysample2',
+        'node_tree': [{'id': 'root2',
+                       'parent': None,
+                       'type': 'BioReplicate',
+                       'meta_controlled': {'foo': {'bar': 'bat'}},
+                       'meta_user': {'a': {'b': 'd'}}}]
+    }
+
+
+def test_get_sample_as_admin(sample_port):
+    url = f'http://localhost:{sample_port}'
+
+    # verison 1
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN1), json={
+        'method': 'SampleService.create_sample',
+        'version': '1.1',
+        'id': '67',
+        'params': [{
+            'sample': {'name': 'mysample',
+                       'node_tree': [{'id': 'root',
+                                      'type': 'BioReplicate',
+                                      'meta_controlled': {'foo': {'bar': 'baz'}
+                                                          },
+                                      'meta_user': {'a': {'b': 'c'}}
+                                      }
+                                     ]
+                       }
+        }]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    assert ret.json()['result'][0]['version'] == 1
+    id_ = ret.json()['result'][0]['id']
+
+    # token3 has read admin but not full admin
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN3), json={
+        'method': 'SampleService.get_sample',
+        'version': '1.1',
+        'id': '42',
+        'params': [{'id': id_, 'version': 1, 'as_admin': 1}]
+    })
+    print(ret.text)
+    assert ret.ok is True
+    j = ret.json()['result'][0]
+    assert_ms_epoch_close_to_now(j['save_date'])
+    del j['save_date']
+    assert j == {
+        'id': id_,
+        'version': 1,
+        'user': USER1,
+        'name': 'mysample',
+        'node_tree': [{'id': 'root',
+                       'parent': None,
+                       'type': 'BioReplicate',
+                       'meta_controlled': {'foo': {'bar': 'baz'},
+                                           },
+                       'meta_user': {'a': {'b': 'c'}}}]
     }
 
 
@@ -717,7 +998,7 @@ def test_create_sample_fail_no_nodes(sample_port):
     # print(ret.text)
     assert ret.status_code == 500
     assert ret.json()['error']['message'] == (
-        f'Sample service error code 30001 Illegal input parameter: sample node tree ' +
+        'Sample service error code 30001 Illegal input parameter: sample node tree ' +
         'must be present and a list')
 
 
@@ -805,14 +1086,14 @@ def test_create_sample_fail_permissions(sample_port):
 def test_create_sample_fail_admin_bad_user_name(sample_port):
     _create_sample_fail_admin_as_user(
         sample_port, 'bad\tuser',
-        f'Sample service error code 30001 Illegal input parameter: userid contains ' +
+        'Sample service error code 30001 Illegal input parameter: userid contains ' +
         'control characters')
 
 
 def test_create_sample_fail_admin_no_such_user(sample_port):
     _create_sample_fail_admin_as_user(
         sample_port, USER4 + 'impostor',
-        f'Sample service error code 50000 No such user: user4impostor')
+        'Sample service error code 50000 No such user: user4impostor')
 
 
 def _create_sample_fail_admin_as_user(sample_port, user, expected):
@@ -862,7 +1143,7 @@ def test_create_sample_fail_admin_permissions(sample_port):
     # print(ret.text)
     assert ret.status_code == 500
     assert ret.json()['error']['message'] == (
-        f'Sample service error code 20000 Unauthorized: User user3 does not have the ' +
+        'Sample service error code 20000 Unauthorized: User user3 does not have the ' +
         'necessary administration privileges to run method create_sample')
 
 
@@ -898,7 +1179,7 @@ def test_get_sample_fail_bad_id(sample_port):
     assert ret.status_code == 500
     assert ret.json()['error']['message'] == (
         'Sample service error code 30001 Illegal input parameter: ' +
-        f'Sample ID {id_[:-1]} must be a UUID string')
+        f'id {id_[:-1]} must be a UUID string')
 
 
 def test_get_sample_fail_permissions(sample_port):
@@ -967,9 +1248,53 @@ def test_get_sample_fail_admin_permissions(sample_port):
     # print(ret.text)
     assert ret.status_code == 500
     assert ret.json()['error']['message'] == (
-        f'Sample service error code 20000 Unauthorized: User user4 does not have the ' +
+        'Sample service error code 20000 Unauthorized: User user4 does not have the ' +
         'necessary administration privileges to run method get_sample')
 
+
+def test_get_and_replace_acls(sample_port, kafka):
+    _clear_kafka_messages(kafka)
+    url = f'http://localhost:{sample_port}'
+
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN1), json={
+        'method': 'SampleService.create_sample',
+        'version': '1.1',
+        'id': '67',
+        'params': [{
+            'sample': {'name': 'mysample',
+                       'node_tree': [{'id': 'root',
+                                      'type': 'BioReplicate',
+                                      }
+                                     ]
+                       }
+        }]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    assert ret.json()['result'][0]['version'] == 1
+    id_ = ret.json()['result'][0]['id']
+
+    _assert_acl_contents(url, id_, TOKEN1, {
+        'owner': USER1,
+        'admin': [],
+        'write': [],
+        'read': []
+    })
+
+    _replace_acls(url, id_, TOKEN1, {
+        'admin': [USER2],
+        'write': [USER_NO_TOKEN1, USER_NO_TOKEN2, USER3],
+        'read': [USER_NO_TOKEN3, USER4]
+    })
+
+    # test that people in the acls can read
+    for token in [TOKEN2, TOKEN3, TOKEN4]:
+        _assert_acl_contents(url, id_, token, {
+            'owner': USER1,
+            'admin': [USER2],
+            'write': [USER_NO_TOKEN1, USER_NO_TOKEN2, USER3],
+            'read': [USER_NO_TOKEN3, USER4]
+        })
 
 def test_get_and_replace_acls(sample_port):
     url = f'http://localhost:{sample_port}'
@@ -1096,6 +1421,16 @@ def test_get_and_replace_acls(sample_port):
         'read': [USER2]
     })
 
+    _check_kafka_messages(
+        kafka,
+        [
+            {'event_type': 'NEW_SAMPLE', 'sample_id': id_, 'sample_ver': 1},
+            {'event_type': 'ACL_CHANGE', 'sample_id': id_},
+            {'event_type': 'NEW_SAMPLE', 'sample_id': id_, 'sample_ver': 2},
+            {'event_type': 'NEW_SAMPLE', 'sample_id': id_, 'sample_ver': 3},
+            {'event_type': 'ACL_CHANGE', 'sample_id': id_},
+        ])
+
 
 def test_get_acls_as_admin(sample_port):
     url = f'http://localhost:{sample_port}'
@@ -1210,7 +1545,7 @@ def test_get_acls_fail_no_id(sample_port):
     })
     assert ret.status_code == 500
     assert ret.json()['error']['message'] == (
-        'Sample service error code 30000 Missing input parameter: Sample ID')
+        'Sample service error code 30000 Missing input parameter: id')
 
 
 def test_get_acls_fail_permissions(sample_port):
@@ -1245,7 +1580,7 @@ def test_get_acls_fail_admin_permissions(sample_port):
     })
     assert ret.status_code == 500
     assert ret.json()['error']['message'] == (
-        f'Sample service error code 20000 Unauthorized: User user4 does not have the ' +
+        'Sample service error code 20000 Unauthorized: User user4 does not have the ' +
         'necessary administration privileges to run method get_sample_acls')
 
 
@@ -1286,7 +1621,7 @@ def test_replace_acls_fail_no_id(sample_port):
     })
     assert ret.status_code == 500
     assert ret.json()['error']['message'] == (
-        'Sample service error code 30000 Missing input parameter: Sample ID')
+        'Sample service error code 30000 Missing input parameter: id')
 
 
 def test_replace_acls_fail_bad_acls(sample_port):
@@ -1370,7 +1705,7 @@ def test_replace_acls_fail_bad_user(sample_port):
     })
     assert ret.status_code == 500
     assert ret.json()['error']['message'] == (
-        f'Sample service error code 50000 No such user: a, philbin_j_montgomery_iii')
+        'Sample service error code 50000 No such user: a, philbin_j_montgomery_iii')
 
 
 def test_replace_acls_fail_user_in_2_acls(sample_port):
@@ -1485,7 +1820,7 @@ def _create_sample(url, token, sample, expected_version):
     return ret.json()['result'][0]['id']
 
 
-def _create_link(url, token, params, print_resp=False):
+def _create_link(url, token, expected_user, params, print_resp=False):
     ret = requests.post(url, headers=get_authorized_headers(token), json={
         'method': 'SampleService.create_data_link',
         'version': '1.1',
@@ -1495,12 +1830,31 @@ def _create_link(url, token, params, print_resp=False):
     if print_resp:
         print(ret.text)
     assert ret.ok is True
+    link = ret.json()['result'][0]['new_link']
+    id_ = link['linkid']
+    uuid.UUID(id_)  # check the ID is a valid UUID
+    del link['linkid']
+    created = link['created']
+    assert_ms_epoch_close_to_now(created)
+    del link['created']
+    assert link == {
+        'id': params['id'],
+        'version': params['version'],
+        'node': params['node'],
+        'upa': params['upa'],
+        'dataid': params.get('dataid'),
+        'createdby': expected_user,
+        'expiredby': None,
+        'expired': None
+    }
+    return id_
 
 
-def test_create_links_and_get_links_from_sample_basic(sample_port, workspace):
+def test_create_links_and_get_links_from_sample_basic(sample_port, workspace, kafka):
     '''
     Also tests that the 'as_user' key is ignored if 'as_admin' is falsy.
     '''
+    _clear_kafka_messages(kafka)
 
     url = f'http://localhost:{sample_port}'
     wsurl = f'http://localhost:{workspace.port}'
@@ -1551,13 +1905,14 @@ def test_create_links_and_get_links_from_sample_basic(sample_port, workspace):
         )
 
     # create links
-    _create_link(
-        url, TOKEN3, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/2/2', 'as_user': USER1})
-    _create_link(
-        url, TOKEN3,
+    # as_user should be ignored unless as_admin is true
+    lid1 = _create_link(url, TOKEN3, USER3,
+                        {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/2/2', 'as_user': USER1})
+    lid2 = _create_link(
+        url, TOKEN3, USER3,
         {'id': id1, 'version': 1, 'node': 'root', 'upa': '1/1/1', 'dataid': 'column1'})
-    _create_link(
-        url, TOKEN4,
+    lid3 = _create_link(
+        url, TOKEN4, USER4,
         {'id': id2, 'version': 1, 'node': 'foo2', 'upa': '1/2/1', 'dataid': 'column2'})
 
     # get links from sample 1
@@ -1576,6 +1931,7 @@ def test_create_links_and_get_links_from_sample_basic(sample_port, workspace):
     res = ret.json()['result'][0]['links']
     expected_links = [
         {
+            'linkid': lid1,
             'id': id1,
             'version': 1,
             'node': 'foo',
@@ -1586,6 +1942,7 @@ def test_create_links_and_get_links_from_sample_basic(sample_port, workspace):
             'expired': None
          },
         {
+            'linkid': lid2,
             'id': id1,
             'version': 1,
             'node': 'root',
@@ -1598,12 +1955,12 @@ def test_create_links_and_get_links_from_sample_basic(sample_port, workspace):
     ]
 
     assert len(res) == len(expected_links)
-    for l in res:
-        assert_ms_epoch_close_to_now(l['created'])
-        del l['created']
+    for link in res:
+        assert_ms_epoch_close_to_now(link['created'])
+        del link['created']
 
-    for l in expected_links:
-        assert l in res
+    for link in expected_links:
+        assert link in res
 
     # get links from sample 2
     ret = requests.post(url, headers=get_authorized_headers(TOKEN4), json={
@@ -1623,6 +1980,7 @@ def test_create_links_and_get_links_from_sample_basic(sample_port, workspace):
     del res[0]['created']
     assert res == [
         {
+            'linkid': lid3,
             'id': id2,
             'version': 1,
             'node': 'foo2',
@@ -1649,11 +2007,24 @@ def test_create_links_and_get_links_from_sample_basic(sample_port, workspace):
     assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
     assert ret.json()['result'][0]['links'] == []
 
+    _check_kafka_messages(
+        kafka,
+        [
+            {'event_type': 'NEW_SAMPLE', 'sample_id': id1, 'sample_ver': 1},
+            {'event_type': 'NEW_SAMPLE', 'sample_id': id2, 'sample_ver': 1},
+            {'event_type': 'NEW_SAMPLE', 'sample_id': id2, 'sample_ver': 2},
+            {'event_type': 'NEW_LINK', 'link_id': lid1},
+            {'event_type': 'NEW_LINK', 'link_id': lid2},
+            {'event_type': 'NEW_LINK', 'link_id': lid3},
+        ])
 
-def test_update_and_get_links_from_sample(sample_port, workspace):
+
+def test_update_and_get_links_from_sample(sample_port, workspace, kafka):
     '''
     Also tests getting links from a sample using an effective time
     '''
+    _clear_kafka_messages(kafka)
+
     url = f'http://localhost:{sample_port}'
     wsurl = f'http://localhost:{workspace.port}'
     wscli = Workspace(wsurl, token=TOKEN3)
@@ -1679,33 +2050,23 @@ def test_update_and_get_links_from_sample(sample_port, workspace):
     _replace_acls(url, id1, TOKEN3, {'admin': [USER4]})
 
     # create links
-    ret = requests.post(url, headers=get_authorized_headers(TOKEN3), json={
-        'method': 'SampleService.create_data_link',
-        'version': '1.1',
-        'id': '42',
-        'params': [{'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'}]
-    })
-    # print(ret.text)
-    assert ret.ok is True
+    lid1 = _create_link(url, TOKEN3, USER3,
+                        {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'})
 
     oldlinkactive = datetime.datetime.now()
     time.sleep(1)
 
     # update link node
-    ret = requests.post(url, headers=get_authorized_headers(TOKEN4), json={
-        'method': 'SampleService.create_data_link',
-        'version': '1.1',
-        'id': '42',
-        'params': [
-            {'id': id1,
-             'version': 1,
-             'node': 'root',
-             'upa': '1/1/1',
-             'dataid': 'yay',
-             'update': 1}]
-    })
-    # print(ret.text)
-    assert ret.ok is True
+    lid2 = _create_link(
+        url,
+        TOKEN4,
+        USER4,
+        {'id': id1,
+         'version': 1,
+         'node': 'root',
+         'upa': '1/1/1',
+         'dataid': 'yay',
+         'update': 1})
 
     # get current link
     ret = requests.post(url, headers=get_authorized_headers(TOKEN3), json={
@@ -1727,6 +2088,7 @@ def test_update_and_get_links_from_sample(sample_port, workspace):
     del res['links'][0]['created']
     assert res == {'links': [
         {
+            'linkid': lid2,
             'id': id1,
             'version': 1,
             'node': 'root',
@@ -1761,6 +2123,7 @@ def test_update_and_get_links_from_sample(sample_port, workspace):
         'effective_time': round(oldlinkactive.timestamp() * 1000),
         'links': [
             {
+                'linkid': lid1,
                 'id': id1,
                 'version': 1,
                 'node': 'foo',
@@ -1770,6 +2133,16 @@ def test_update_and_get_links_from_sample(sample_port, workspace):
                 'expiredby': USER4,
             }
         ]}
+
+    _check_kafka_messages(
+        kafka,
+        [
+            {'event_type': 'NEW_SAMPLE', 'sample_id': id1, 'sample_ver': 1},
+            {'event_type': 'ACL_CHANGE', 'sample_id': id1},
+            {'event_type': 'NEW_LINK', 'link_id': lid1},
+            {'event_type': 'NEW_LINK', 'link_id': lid2},
+            {'event_type': 'EXPIRED_LINK', 'link_id': lid1},
+        ])
 
 
 def test_create_data_link_as_admin(sample_port, workspace):
@@ -1797,18 +2170,20 @@ def test_create_data_link_as_admin(sample_port, workspace):
         )
 
     # create links
-    _create_link(
+    lid1 = _create_link(
         url,
         TOKEN2,
+        USER2,
         {'id': id1,
          'version': 1,
          'node': 'root',
          'upa': '1/1/1',
          'dataid': 'yeet',
          'as_admin': 1})
-    _create_link(
+    lid2 = _create_link(
         url,
         TOKEN2,
+        USER4,
         {'id': id1,
          'version': 1,
          'node': 'foo',
@@ -1832,6 +2207,7 @@ def test_create_data_link_as_admin(sample_port, workspace):
     res = ret.json()['result'][0]['links']
     expected_links = [
         {
+            'linkid': lid1,
             'id': id1,
             'version': 1,
             'node': 'root',
@@ -1842,6 +2218,7 @@ def test_create_data_link_as_admin(sample_port, workspace):
             'expired': None
          },
         {
+            'linkid': lid2,
             'id': id1,
             'version': 1,
             'node': 'foo',
@@ -1854,12 +2231,12 @@ def test_create_data_link_as_admin(sample_port, workspace):
     ]
 
     assert len(res) == len(expected_links)
-    for l in res:
-        assert_ms_epoch_close_to_now(l['created'])
-        del l['created']
+    for link in res:
+        assert_ms_epoch_close_to_now(link['created'])
+        del link['created']
 
-    for l in expected_links:
-        assert l in res
+    for link in expected_links:
+        assert link in res
 
 
 def test_get_links_from_sample_exclude_workspaces(sample_port, workspace):
@@ -1899,11 +2276,14 @@ def test_get_links_from_sample_exclude_workspaces(sample_port, workspace):
     _replace_acls(url, id_, TOKEN3, {'admin': [USER4]})
 
     # create links
-    _create_link(url, TOKEN3, {'id': id_, 'version': 1, 'node': 'foo', 'upa': '1/1/1'})
-    _create_link(url, TOKEN4, {'id': id_, 'version': 1, 'node': 'foo', 'upa': '2/1/1'})
+    lid1 = _create_link(
+        url, TOKEN3, USER3, {'id': id_, 'version': 1, 'node': 'foo', 'upa': '1/1/1'})
+    lid2 = _create_link(
+        url, TOKEN4, USER4, {'id': id_, 'version': 1, 'node': 'foo', 'upa': '2/1/1'})
+    lid3 = _create_link(url, TOKEN4, USER4,
+                        {'id': id_, 'version': 1, 'node': 'foo', 'upa': '3/1/1', 'dataid': 'whee'})
     _create_link(
-        url, TOKEN4, {'id': id_, 'version': 1, 'node': 'foo', 'upa': '3/1/1', 'dataid': 'whee'})
-    _create_link(url, TOKEN4, {'id': id_, 'version': 1, 'node': 'foo', 'upa': '4/1/1'})
+        url, TOKEN4, USER4,  {'id': id_, 'version': 1, 'node': 'foo', 'upa': '4/1/1'})
 
     # check correct links are returned
     ret = requests.post(url, headers=get_authorized_headers(TOKEN3), json={
@@ -1921,6 +2301,7 @@ def test_get_links_from_sample_exclude_workspaces(sample_port, workspace):
     res = ret.json()['result'][0]['links']
     expected_links = [
         {
+            'linkid': lid1,
             'id': id_,
             'version': 1,
             'node': 'foo',
@@ -1931,6 +2312,7 @@ def test_get_links_from_sample_exclude_workspaces(sample_port, workspace):
             'expired': None
          },
         {
+            'linkid': lid2,
             'id': id_,
             'version': 1,
             'node': 'foo',
@@ -1941,6 +2323,7 @@ def test_get_links_from_sample_exclude_workspaces(sample_port, workspace):
             'expired': None
          },
         {
+            'linkid': lid3,
             'id': id_,
             'version': 1,
             'node': 'foo',
@@ -1953,12 +2336,12 @@ def test_get_links_from_sample_exclude_workspaces(sample_port, workspace):
     ]
 
     assert len(res) == len(expected_links)
-    for l in res:
-        assert_ms_epoch_close_to_now(l['created'])
-        del l['created']
+    for link in res:
+        assert_ms_epoch_close_to_now(link['created'])
+        del link['created']
 
-    for l in expected_links:
-        assert l in res
+    for link in expected_links:
+        assert link in res
 
 
 def test_get_links_from_sample_as_admin(sample_port, workspace):
@@ -1976,7 +2359,7 @@ def test_get_links_from_sample_as_admin(sample_port, workspace):
     id_ = _create_generic_sample(url, TOKEN4)
 
     # create links
-    _create_link(url, TOKEN4, {'id': id_, 'version': 1, 'node': 'foo', 'upa': '1/1/1'})
+    lid = _create_link(url, TOKEN4, USER4, {'id': id_, 'version': 1, 'node': 'foo', 'upa': '1/1/1'})
 
     # check correct links are returned, user 3 has read admin perms, but not full
     ret = requests.post(url, headers=get_authorized_headers(TOKEN3), json={
@@ -1997,6 +2380,7 @@ def test_get_links_from_sample_as_admin(sample_port, workspace):
     del link['created']
 
     assert link == {
+            'linkid': lid,
             'id': id_,
             'version': 1,
             'node': 'foo',
@@ -2016,7 +2400,7 @@ def test_create_link_fail(sample_port, workspace):
 
     _create_link_fail(
         sample_port, TOKEN3, {'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'},
-        'Sample service error code 30000 Missing input parameter: Sample ID')
+        'Sample service error code 30000 Missing input parameter: id')
     _create_link_fail(
         sample_port, TOKEN3, {'id': id_, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'},
         'Sample service error code 30000 Missing input parameter: version')
@@ -2036,14 +2420,14 @@ def test_create_link_fail(sample_port, workspace):
     _replace_acls(url, id_, TOKEN3, {'write': [USER4]})
     _create_link_fail(  # fails if permission granted is admin
         sample_port, TOKEN4, {'id': id_, 'version': 1, 'node': 'foo', 'upa': '1/1/1'},
-        f'Sample service error code 20000 Unauthorized: User user4 cannot ' +
+        'Sample service error code 20000 Unauthorized: User user4 cannot ' +
         f'administrate sample {id_}')
 
     _replace_acls(url, id_, TOKEN3, {'admin': [USER4]})
     wscli.set_permissions({'id': 1, 'new_permission': 'r', 'users': [USER4]})
     _create_link_fail(  # fails if permission granted is write
         sample_port, TOKEN4, {'id': id_, 'version': 1, 'node': 'foo', 'upa': '1/1/1'},
-        f'Sample service error code 20000 Unauthorized: User user4 cannot write to upa 1/1/1')
+        'Sample service error code 20000 Unauthorized: User user4 cannot write to upa 1/1/1')
 
     wscli.save_objects({'id': 1, 'objects': [
         {'name': 'bar', 'data': {}, 'type': 'Trivial.Object-1.0'},
@@ -2061,12 +2445,12 @@ def test_create_link_fail(sample_port, workspace):
          'upa': '1/1/1',
          'as_admin': 1,
          'as_user': 'foo\bbar'},
-        f'Sample service error code 30001 Illegal input parameter: ' +
+        'Sample service error code 30001 Illegal input parameter: ' +
         'userid contains control characters')
     _create_link_fail(
         sample_port, TOKEN3,
         {'id': id_, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'as_user': USER4, 'as_admin': 'f'},
-        f'Sample service error code 20000 Unauthorized: User user3 does not have ' +
+        'Sample service error code 20000 Unauthorized: User user3 does not have ' +
         'the necessary administration privileges to run method create_data_link')
     _create_link_fail(
         sample_port,
@@ -2077,7 +2461,7 @@ def test_create_link_fail(sample_port, workspace):
          'upa': '1/1/1',
          'as_user': 'fake',
          'as_admin': 'f'},
-        f'Sample service error code 50000 No such user: fake')
+        'Sample service error code 50000 No such user: fake')
 
 
 def test_create_link_fail_link_exists(sample_port, workspace):
@@ -2092,14 +2476,8 @@ def test_create_link_fail_link_exists(sample_port, workspace):
 
     id_ = _create_generic_sample(url, TOKEN3)
 
-    ret = requests.post(url, headers=get_authorized_headers(TOKEN3), json={
-        'method': 'SampleService.create_data_link',
-        'version': '1.1',
-        'id': '42',
-        'params': [{'id': id_, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'}]
-    })
-    # print(ret.text)
-    assert ret.ok is True
+    _create_link(url, TOKEN3, USER3,
+                 {'id': id_, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'})
 
     _create_link_fail(
         sample_port, TOKEN3,
@@ -2127,7 +2505,7 @@ def test_get_links_from_sample_fail(sample_port):
 
     _get_link_from_sample_fail(
         sample_port, TOKEN3, {},
-        'Sample service error code 30000 Missing input parameter: Sample ID')
+        'Sample service error code 30000 Missing input parameter: id')
     _get_link_from_sample_fail(
         sample_port, TOKEN3, {'id': id_},
         'Sample service error code 30000 Missing input parameter: version')
@@ -2166,16 +2544,18 @@ def _get_current_epochmillis():
     return round(datetime.datetime.now(tz=datetime.timezone.utc).timestamp() * 1000)
 
 
-def test_expire_data_link(sample_port, workspace):
-    _expire_data_link(sample_port, workspace, None)
+def test_expire_data_link(sample_port, workspace, kafka):
+    _expire_data_link(sample_port, workspace, None, kafka)
 
 
-def test_expire_data_link_with_data_id(sample_port, workspace):
-    _expire_data_link(sample_port, workspace, 'whee')
+def test_expire_data_link_with_data_id(sample_port, workspace, kafka):
+    _expire_data_link(sample_port, workspace, 'whee', kafka)
 
 
-def _expire_data_link(sample_port, workspace, dataid):
+def _expire_data_link(sample_port, workspace, dataid, kafka):
     ''' also tests that 'as_user' is ignored if 'as_admin' is false '''
+    _clear_kafka_messages(kafka)
+
     url = f'http://localhost:{sample_port}'
     wsurl = f'http://localhost:{workspace.port}'
     wscli = Workspace(wsurl, token=TOKEN3)
@@ -2202,10 +2582,10 @@ def _expire_data_link(sample_port, workspace, dataid):
     _replace_acls(url, id1, TOKEN3, {'admin': [USER4]})
 
     # create links
-    _create_link(
-        url, TOKEN3, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': dataid})
-    _create_link(
-        url, TOKEN3, {'id': id1, 'version': 1, 'node': 'bar', 'upa': '1/1/1', 'dataid': 'fake'})
+    lid1 = _create_link(url, TOKEN3, USER3,
+                        {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': dataid})
+    lid2 = _create_link(url, TOKEN3, USER3,
+                        {'id': id1, 'version': 1, 'node': 'bar', 'upa': '1/1/1', 'dataid': 'fake'})
 
     time.sleep(1)  # need to be able to set a resonable effective time to fetch links
 
@@ -2234,17 +2614,18 @@ def _expire_data_link(sample_port, workspace, dataid):
     assert_ms_epoch_close_to_now(ret.json()['result'][0]['effective_time'])
     links = ret.json()['result'][0]['links']
     assert len(links) == 2
-    for l in links:
-        if l['dataid'] == 'fake':
-            current_link = l
+    for link in links:
+        if link['dataid'] == 'fake':
+            current_link = link
         else:
-            expired_link = l
+            expired_link = link
     assert_ms_epoch_close_to_now(expired_link['expired'])
     assert_ms_epoch_close_to_now(expired_link['created'] + 1000)
     del expired_link['created']
     del expired_link['expired']
 
     assert expired_link == {
+            'linkid': lid1,
             'id': id1,
             'version': 1,
             'node': 'foo',
@@ -2258,6 +2639,7 @@ def _expire_data_link(sample_port, workspace, dataid):
     del current_link['created']
 
     assert current_link == {
+            'linkid': lid2,
             'id': id1,
             'version': 1,
             'node': 'bar',
@@ -2268,16 +2650,28 @@ def _expire_data_link(sample_port, workspace, dataid):
             'expired': None
          }
 
+    _check_kafka_messages(
+        kafka,
+        [
+            {'event_type': 'NEW_SAMPLE', 'sample_id': id1, 'sample_ver': 1},
+            {'event_type': 'ACL_CHANGE', 'sample_id': id1},
+            {'event_type': 'NEW_LINK', 'link_id': lid1},
+            {'event_type': 'NEW_LINK', 'link_id': lid2},
+            {'event_type': 'EXPIRED_LINK', 'link_id': lid1},
+        ])
 
-def test_expire_data_link_as_admin(sample_port, workspace):
-    _expire_data_link_as_admin(sample_port, workspace, None, USER2)
+
+def test_expire_data_link_as_admin(sample_port, workspace, kafka):
+    _expire_data_link_as_admin(sample_port, workspace, None, USER2, kafka)
 
 
-def test_expire_data_link_as_admin_impersonate_user(sample_port, workspace):
-    _expire_data_link_as_admin(sample_port, workspace, USER4, USER4)
+def test_expire_data_link_as_admin_impersonate_user(sample_port, workspace, kafka):
+    _expire_data_link_as_admin(sample_port, workspace, USER4, USER4, kafka)
 
 
-def _expire_data_link_as_admin(sample_port, workspace, user, expected_user):
+def _expire_data_link_as_admin(sample_port, workspace, user, expected_user, kafka):
+    _clear_kafka_messages(kafka)
+
     url = f'http://localhost:{sample_port}'
     wsurl = f'http://localhost:{workspace.port}'
     wscli = Workspace(wsurl, token=TOKEN3)
@@ -2303,8 +2697,8 @@ def _expire_data_link_as_admin(sample_port, workspace, user, expected_user):
         )
 
     # create links
-    _create_link(
-        url, TOKEN3, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'duidy'})
+    lid = _create_link(url, TOKEN3, USER3,
+                       {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'duidy'})
 
     time.sleep(1)  # need to be able to set a resonable effective time to fetch links
 
@@ -2340,6 +2734,7 @@ def _expire_data_link_as_admin(sample_port, workspace, user, expected_user):
     del link['expired']
 
     assert link == {
+            'linkid': lid,
             'id': id1,
             'version': 1,
             'node': 'foo',
@@ -2348,6 +2743,14 @@ def _expire_data_link_as_admin(sample_port, workspace, user, expected_user):
             'createdby': USER3,
             'expiredby': expected_user,
          }
+
+    _check_kafka_messages(
+        kafka,
+        [
+            {'event_type': 'NEW_SAMPLE', 'sample_id': id1, 'sample_ver': 1},
+            {'event_type': 'NEW_LINK', 'link_id': lid},
+            {'event_type': 'EXPIRED_LINK', 'link_id': lid},
+        ])
 
 
 def test_expire_data_link_fail(sample_port, workspace):
@@ -2374,8 +2777,8 @@ def test_expire_data_link_fail(sample_port, workspace):
         )
 
     # create links
-    _create_link(
-        url, TOKEN3, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'})
+    _create_link(url, TOKEN3, USER3,
+                 {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'})
 
     _expire_data_link_fail(
         sample_port, TOKEN3, {}, 'Sample service error code 30000 Missing input parameter: upa')
@@ -2407,7 +2810,7 @@ def test_expire_data_link_fail(sample_port, workspace):
     wscli.set_permissions({'id': 1, 'new_permission': 'w', 'users': [USER4]})
     _expire_data_link_fail(
         sample_port, TOKEN4, {'upa': '1/1/1', 'dataid': 'yay'},
-        f'Sample service error code 20000 Unauthorized: User user4 cannot ' +
+        'Sample service error code 20000 Unauthorized: User user4 cannot ' +
         f'administrate sample {id1}')
 
     # admin tests
@@ -2494,12 +2897,13 @@ def test_get_links_from_data(sample_port, workspace):
         )
 
     # create links
-    _create_link(url, TOKEN3, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/2/2'})
-    _create_link(
-        url, TOKEN4,
+    lid1 = _create_link(
+        url, TOKEN3, USER3, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/2/2'})
+    lid2 = _create_link(
+        url, TOKEN4, USER4,
         {'id': id2, 'version': 1, 'node': 'root2', 'upa': '1/1/1', 'dataid': 'column1'})
-    _create_link(
-        url, TOKEN4,
+    lid3 = _create_link(
+        url, TOKEN4, USER4,
         {'id': id2, 'version': 2, 'node': 'foo3', 'upa': '1/2/2', 'dataid': 'column2'})
 
     # get links from object 1/2/2
@@ -2518,6 +2922,7 @@ def test_get_links_from_data(sample_port, workspace):
     res = ret.json()['result'][0]['links']
     expected_links = [
         {
+            'linkid': lid1,
             'id': id1,
             'version': 1,
             'node': 'foo',
@@ -2528,6 +2933,7 @@ def test_get_links_from_data(sample_port, workspace):
             'expired': None
          },
         {
+            'linkid': lid3,
             'id': id2,
             'version': 2,
             'node': 'foo3',
@@ -2540,12 +2946,12 @@ def test_get_links_from_data(sample_port, workspace):
     ]
 
     assert len(res) == len(expected_links)
-    for l in res:
-        assert_ms_epoch_close_to_now(l['created'])
-        del l['created']
+    for link in res:
+        assert_ms_epoch_close_to_now(link['created'])
+        del link['created']
 
-    for l in expected_links:
-        assert l in res
+    for link in expected_links:
+        assert link in res
 
     # get links from object 1/1/1
     ret = requests.post(url, headers=get_authorized_headers(TOKEN3), json={
@@ -2565,6 +2971,7 @@ def test_get_links_from_data(sample_port, workspace):
     del res[0]['created']
     assert res == [
         {
+            'linkid': lid2,
             'id': id2,
             'version': 1,
             'node': 'root2',
@@ -2617,14 +3024,14 @@ def test_get_links_from_data_expired(sample_port, workspace):
     _replace_acls(url, id1, TOKEN3, {'admin': [USER4]})
 
     # create links
-    _create_link(
-        url, TOKEN3, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'})
+    lid1 = _create_link(url, TOKEN3, USER3,
+                        {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'})
 
     oldlinkactive = datetime.datetime.now()
     time.sleep(1)
 
     # update link node
-    _create_link(url, TOKEN4, {
+    lid2 = _create_link(url, TOKEN4, USER4, {
         'id': id1,
         'version': 1,
         'node': 'root',
@@ -2653,6 +3060,7 @@ def test_get_links_from_data_expired(sample_port, workspace):
     del res['links'][0]['created']
     assert res == {'links': [
         {
+            'linkid': lid2,
             'id': id1,
             'version': 1,
             'node': 'root',
@@ -2686,6 +3094,7 @@ def test_get_links_from_data_expired(sample_port, workspace):
         'effective_time': round(oldlinkactive.timestamp() * 1000),
         'links': [
             {
+                'linkid': lid1,
                 'id': id1,
                 'version': 1,
                 'node': 'foo',
@@ -2722,7 +3131,7 @@ def test_get_links_from_data_as_admin(sample_port, workspace):
         )
 
     # create links
-    _create_link(url, TOKEN4, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1'})
+    lid = _create_link(url, TOKEN4, USER4, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1'})
 
     # get links from object, user 3 has admin read perms
     ret = requests.post(url, headers=get_authorized_headers(TOKEN3), json={
@@ -2742,6 +3151,7 @@ def test_get_links_from_data_as_admin(sample_port, workspace):
     assert_ms_epoch_close_to_now(link['created'])
     del link['created']
     assert link == {
+            'linkid': lid,
             'id': id1,
             'version': 1,
             'node': 'foo',
@@ -2772,10 +3182,10 @@ def test_get_links_from_data_fail(sample_port, workspace):
         "value of 'foo' is not a valid epoch millisecond timestamp")
     _get_link_from_data_fail(
         sample_port, TOKEN4, {'upa': '1/1/1'},
-        f'Sample service error code 20000 Unauthorized: User user4 cannot read upa 1/1/1')
+        'Sample service error code 20000 Unauthorized: User user4 cannot read upa 1/1/1')
     _get_link_from_data_fail(
         sample_port, TOKEN3, {'upa': '1/2/1'},
-        f'Sample service error code 50040 No such workspace data: Object 1/2/1 does not exist')
+        'Sample service error code 50040 No such workspace data: Object 1/2/1 does not exist')
 
     # admin tests (also tests missing / deleted objects)
     _get_link_from_data_fail(
@@ -2860,9 +3270,9 @@ def test_get_sample_via_data(sample_port, workspace):
         )
 
     # create links
-    _create_link(url, TOKEN3, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1'})
+    _create_link(url, TOKEN3, USER3, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1'})
     _create_link(
-        url, TOKEN3,
+        url, TOKEN3, USER3,
         {'id': id2, 'version': 2, 'node': 'root3', 'upa': '1/1/1', 'dataid': 'column1'})
 
     # get first sample via link from object 1/1/1 using a token that has no access
@@ -2933,7 +3343,7 @@ def test_get_sample_via_data(sample_port, workspace):
     assert res == expected
 
 
-def test_get_sample_via_from_data_expired(sample_port, workspace):
+def test_get_sample_via_data_expired(sample_port, workspace):
     url = f'http://localhost:{sample_port}'
     wsurl = f'http://localhost:{workspace.port}'
     wscli = Workspace(wsurl, token=TOKEN3)
@@ -2968,11 +3378,11 @@ def test_get_sample_via_from_data_expired(sample_port, workspace):
         )
 
     # create links
-    _create_link(
-        url, TOKEN3, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'})
+    _create_link(url, TOKEN3, USER3,
+                 {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'})
 
     # update link node
-    _create_link(url, TOKEN3, {
+    _create_link(url, TOKEN3, USER3, {
         'id': id2,
         'version': 1,
         'node': 'root2',
@@ -3075,28 +3485,28 @@ def test_get_sample_via_data_fail(sample_port, workspace):
         )
 
     # create links
-    _create_link(
-        url, TOKEN3, {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'})
+    _create_link(url, TOKEN3, USER3,
+                 {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'})
 
     _get_sample_via_data_fail(
         sample_port, TOKEN3, {},
         'Sample service error code 30000 Missing input parameter: upa')
     _get_sample_via_data_fail(
         sample_port, TOKEN3, {'upa': '1/1/1'},
-        'Sample service error code 30000 Missing input parameter: Sample ID')
+        'Sample service error code 30000 Missing input parameter: id')
     _get_sample_via_data_fail(
         sample_port, TOKEN3, {'upa': '1/1/1', 'id': id1},
         'Sample service error code 30000 Missing input parameter: version')
     _get_sample_via_data_fail(
         sample_port, TOKEN4, {'upa': '1/1/1', 'id': id1, 'version': 1},
-        f'Sample service error code 20000 Unauthorized: User user4 cannot read upa 1/1/1')
+        'Sample service error code 20000 Unauthorized: User user4 cannot read upa 1/1/1')
     _get_sample_via_data_fail(
         sample_port, TOKEN3, {'upa': '1/2/1', 'id': id1, 'version': 1},
-        f'Sample service error code 50040 No such workspace data: Object 1/2/1 does not exist')
+        'Sample service error code 50040 No such workspace data: Object 1/2/1 does not exist')
     badid = uuid.uuid4()
     _get_sample_via_data_fail(
         sample_port, TOKEN3, {'upa': '1/1/1', 'id': str(badid), 'version': 1},
-        f'Sample service error code 50050 No such data link: There is no link from UPA 1/1/1 ' +
+        'Sample service error code 50050 No such data link: There is no link from UPA 1/1/1 ' +
         f'to sample {badid}')
     _get_sample_via_data_fail(
         sample_port, TOKEN3, {'upa': '1/1/1', 'id': str(id1), 'version': 2},
@@ -3108,6 +3518,148 @@ def _get_sample_via_data_fail(sample_port, token, params, expected):
     url = f'http://localhost:{sample_port}'
     ret = requests.post(url, headers=get_authorized_headers(token), json={
         'method': 'SampleService.get_sample_via_data',
+        'version': '1.1',
+        'id': '42',
+        'params': [params]
+    })
+    assert ret.status_code == 500
+    assert ret.json()['error']['message'] == expected
+
+
+def test_get_data_link(sample_port, workspace):
+    url = f'http://localhost:{sample_port}'
+    wsurl = f'http://localhost:{workspace.port}'
+    wscli = Workspace(wsurl, token=TOKEN4)
+
+    # create workspace & objects
+    wscli.create_workspace({'workspace': 'foo'})
+    wscli.save_objects({'id': 1, 'objects': [
+        {'name': 'bar', 'data': {}, 'type': 'Trivial.Object-1.0'},
+        ]})
+
+    # create samples
+    id1 = _create_sample(
+        url,
+        TOKEN4,
+        {'name': 'mysample',
+         'node_tree': [{'id': 'root', 'type': 'BioReplicate'},
+                       {'id': 'foo', 'type': 'TechReplicate', 'parent': 'root'}
+                       ]
+         },
+        1
+        )
+
+    # create link
+    lid = _create_link(url, TOKEN4, USER4,
+                       {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'})
+
+    # get link, user 3 has admin read perms
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN3), json={
+        'method': 'SampleService.get_data_link',
+        'version': '1.1',
+        'id': '42',
+        'params': [{'linkid': lid}]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+
+    assert len(ret.json()['result']) == 1
+    link = ret.json()['result'][0]
+    created = link.pop('created')
+    assert_ms_epoch_close_to_now(created)
+    assert link == {
+            'linkid': lid,
+            'id': id1,
+            'version': 1,
+            'node': 'foo',
+            'upa': '1/1/1',
+            'dataid': 'yay',
+            'createdby': USER4,
+            'expiredby': None,
+            'expired': None
+         }
+
+    # expire link
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN4), json={
+        'method': 'SampleService.expire_data_link',
+        'version': '1.1',
+        'id': '42',
+        'params': [{'upa': '1/1/1', 'dataid': 'yay'}]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+
+    # get link, user 5 has full perms
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN5), json={
+        'method': 'SampleService.get_data_link',
+        'version': '1.1',
+        'id': '42',
+        'params': [{'linkid': lid}]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+
+    assert len(ret.json()['result']) == 1
+    link = ret.json()['result'][0]
+    assert_ms_epoch_close_to_now(link['expired'])
+    del link['expired']
+    assert link == {
+            'linkid': lid,
+            'id': id1,
+            'version': 1,
+            'node': 'foo',
+            'upa': '1/1/1',
+            'dataid': 'yay',
+            'created': created,
+            'createdby': USER4,
+            'expiredby': USER4,
+         }
+
+
+def test_get_data_link_fail(sample_port, workspace):
+    url = f'http://localhost:{sample_port}'
+    wsurl = f'http://localhost:{workspace.port}'
+    wscli = Workspace(wsurl, token=TOKEN4)
+
+    # create workspace & objects
+    wscli.create_workspace({'workspace': 'foo'})
+    wscli.save_objects({'id': 1, 'objects': [
+        {'name': 'bar', 'data': {}, 'type': 'Trivial.Object-1.0'},
+        ]})
+
+    # create samples
+    id1 = _create_sample(
+        url,
+        TOKEN4,
+        {'name': 'mysample',
+         'node_tree': [{'id': 'root', 'type': 'BioReplicate'},
+                       {'id': 'foo', 'type': 'TechReplicate', 'parent': 'root'}
+                       ]
+         },
+        1
+        )
+
+    # create link
+    lid = _create_link(url, TOKEN4, USER4,
+                       {'id': id1, 'version': 1, 'node': 'foo', 'upa': '1/1/1', 'dataid': 'yay'})
+
+    _get_data_link_fail(
+        sample_port, TOKEN3, {}, 'Sample service error code 30000 Missing input parameter: linkid')
+    _get_data_link_fail(
+        sample_port, TOKEN4, {'linkid': lid},
+        'Sample service error code 20000 Unauthorized: User user4 does not have the necessary ' +
+        'administration privileges to run method get_data_link')
+    oid = uuid.uuid4()
+    _get_data_link_fail(
+        sample_port, TOKEN3, {'linkid': str(oid)},
+        f'Sample service error code 50050 No such data link: {oid}')
+
+
+def _get_data_link_fail(sample_port, token, params, expected):
+    # could make a single method that just takes the service method name to DRY things up a bit
+    url = f'http://localhost:{sample_port}'
+    ret = requests.post(url, headers=get_authorized_headers(token), json={
+        'method': 'SampleService.get_data_link',
         'version': '1.1',
         'id': '42',
         'params': [params]
@@ -3146,7 +3698,7 @@ def test_user_lookup_build_fail_bad_auth_url(sample_port, auth):
 
 def test_user_lookup_build_fail_not_auth_url():
     _user_lookup_build_fail(
-        f'https://ci.kbase.us/services',
+        'https://ci.kbase.us/services',
         TOKEN1,
         IOError('Non-JSON response from KBase auth server, status code: 404'))
 
@@ -3346,3 +3898,161 @@ def test_workspace_wrapper_get_workspaces_fail_no_user(sample_port, workspace):
     with raises(Exception) as got:
         ws.get_user_workspaces(UserID('fakeuser'))
     assert_exception_correct(got.value, NoSuchUserError('User fakeuser is not a valid user'))
+
+
+# ###########################
+# Kafka notifier tests
+# ###########################
+
+def test_kafka_notifier_init_fail():
+    _kafka_notifier_init_fail(None, 't', MissingParameterError('bootstrap_servers'))
+    _kafka_notifier_init_fail('   \t   ', 't', MissingParameterError('bootstrap_servers'))
+    _kafka_notifier_init_fail('localhost:10000', None, MissingParameterError('topic'))
+    _kafka_notifier_init_fail('localhost:10000', '   \t   ', MissingParameterError('topic'))
+    _kafka_notifier_init_fail(
+        'localhost:10000', 'mytopic' + 243 * 'a',
+        IllegalParameterError('topic exceeds maximum length of 249'))
+    _kafka_notifier_init_fail(f'localhost:{find_free_port()}', 'mytopic', NoBrokersAvailable())
+
+    for c in ['Ѽ', '_', '.', '*']:
+        _kafka_notifier_init_fail('localhost:10000', f'topic{c}topic', ValueError(
+            f'Illegal character in Kafka topic topic{c}topic: {c}'))
+
+
+def _kafka_notifier_init_fail(servers, topic, expected):
+    with raises(Exception) as got:
+        KafkaNotifier(servers, topic)
+    assert_exception_correct(got.value, expected)
+
+
+def test_kafka_notifier_new_sample(sample_port, kafka):
+    topic = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-' + 186 * 'a'
+    kn = KafkaNotifier(f'localhost:{kafka.port}', topic)
+    try:
+        id_ = uuid.uuid4()
+
+        kn.notify_new_sample_version(id_, 6)
+
+        _check_kafka_messages(
+            kafka,
+            [{'event_type': 'NEW_SAMPLE', 'sample_id': str(id_), 'sample_ver': 6}],
+            topic)
+    finally:
+        kn.close()
+
+
+def test_kafka_notifier_notify_new_sample_version_fail(sample_port, kafka):
+    kn = KafkaNotifier(f'localhost:{kafka.port}', 'mytopic')
+
+    _kafka_notifier_notify_new_sample_version_fail(kn, None, 1, ValueError(
+        'sample_id cannot be a value that evaluates to false'))
+    _kafka_notifier_notify_new_sample_version_fail(kn, uuid.uuid4(), 0, ValueError(
+        'sample_ver must be > 0'))
+    _kafka_notifier_notify_new_sample_version_fail(kn, uuid.uuid4(), -3, ValueError(
+        'sample_ver must be > 0'))
+
+    kn.close()
+    _kafka_notifier_notify_new_sample_version_fail(kn, uuid.uuid4(), 1, ValueError(
+        'client is closed'))
+
+
+def _kafka_notifier_notify_new_sample_version_fail(notifier, sample, version, expected):
+    with raises(Exception) as got:
+        notifier.notify_new_sample_version(sample, version)
+    assert_exception_correct(got.value, expected)
+
+
+def test_kafka_notifier_acl_change(sample_port, kafka):
+    kn = KafkaNotifier(f'localhost:{kafka.port}', 'topictopic')
+    try:
+        id_ = uuid.uuid4()
+
+        kn.notify_sample_acl_change(id_)
+
+        _check_kafka_messages(
+            kafka,
+            [{'event_type': 'ACL_CHANGE', 'sample_id': str(id_)}],
+            'topictopic')
+    finally:
+        kn.close()
+
+
+def test_kafka_notifier_notify_acl_change_fail(sample_port, kafka):
+    kn = KafkaNotifier(f'localhost:{kafka.port}', 'mytopic')
+
+    _kafka_notifier_notify_acl_change_fail(kn, None, ValueError(
+        'sample_id cannot be a value that evaluates to false'))
+
+    kn.close()
+    _kafka_notifier_notify_acl_change_fail(kn, uuid.uuid4(), ValueError(
+        'client is closed'))
+
+
+def _kafka_notifier_notify_acl_change_fail(notifier, sample, expected):
+    with raises(Exception) as got:
+        notifier.notify_sample_acl_change(sample)
+    assert_exception_correct(got.value, expected)
+
+
+def test_kafka_notifier_new_link(sample_port, kafka):
+    kn = KafkaNotifier(f'localhost:{kafka.port}', 'topictopic')
+    try:
+        id_ = uuid.uuid4()
+
+        kn.notify_new_link(id_)
+
+        _check_kafka_messages(
+            kafka,
+            [{'event_type': 'NEW_LINK', 'link_id': str(id_)}],
+            'topictopic')
+    finally:
+        kn.close()
+
+
+def test_kafka_notifier_new_link_fail(sample_port, kafka):
+    kn = KafkaNotifier(f'localhost:{kafka.port}', 'mytopic')
+
+    _kafka_notifier_new_link_fail(kn, None, ValueError(
+        'link_id cannot be a value that evaluates to false'))
+
+    kn.close()
+    _kafka_notifier_new_link_fail(kn, uuid.uuid4(), ValueError(
+        'client is closed'))
+
+
+def _kafka_notifier_new_link_fail(notifier, sample, expected):
+    with raises(Exception) as got:
+        notifier.notify_new_link(sample)
+    assert_exception_correct(got.value, expected)
+
+
+def test_kafka_notifier_expired_link(sample_port, kafka):
+    kn = KafkaNotifier(f'localhost:{kafka.port}', 'topictopic')
+    try:
+        id_ = uuid.uuid4()
+
+        kn.notify_expired_link(id_)
+
+        _check_kafka_messages(
+            kafka,
+            [{'event_type': 'EXPIRED_LINK', 'link_id': str(id_)}],
+            'topictopic')
+    finally:
+        kn.close()
+
+
+def test_kafka_notifier_expired_link_fail(sample_port, kafka):
+    kn = KafkaNotifier(f'localhost:{kafka.port}', 'mytopic')
+
+    _kafka_notifier_expired_link_fail(kn, None, ValueError(
+        'link_id cannot be a value that evaluates to false'))
+
+    kn.close()
+    _kafka_notifier_expired_link_fail(kn, uuid.uuid4(), ValueError(
+        'client is closed'))
+
+
+def _kafka_notifier_expired_link_fail(notifier, sample, expected):
+    with raises(Exception) as got:
+        notifier.notify_expired_link(sample)
+    assert_exception_correct(got.value, expected)

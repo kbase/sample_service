@@ -111,6 +111,7 @@ _VAL_NO_VER = -1
 _FLD_NAME = 'name'
 _FLD_USER = 'user'
 _FLD_SAVE_TIME = 'saved'
+_FLD_ACL_UPDATE_TIME = 'aclupdate'
 
 _FLD_NODE_NAME = 'name'
 _FLD_NODE_TYPE = 'type'
@@ -393,6 +394,7 @@ class ArangoSampleStorage:
                   # yes, this is redundant. It'll match the ver & node collectons though
                   _FLD_ID: str(sample.id),  # TODO test this is saved
                   _FLD_VERSIONS: [str(versionid)],
+                  _FLD_ACL_UPDATE_TIME: sample.savetime.timestamp(),
                   _FLD_ACLS: {_FLD_OWNER: sample.user.id,
                               _FLD_ADMIN: [],
                               _FLD_WRITE: [],
@@ -505,9 +507,10 @@ class ArangoSampleStorage:
                        )
         return ret
 
-    def _list_to_meta(self, l: List[_Dict[str, _Any]]) -> _Dict[str, _Dict[str, _PrimitiveType]]:
+    def _list_to_meta(
+            self, list: List[_Dict[str, _Any]]) -> _Dict[str, _Dict[str, _PrimitiveType]]:
         ret: _Dict[str, _Dict[str, _PrimitiveType]] = defaultdict(dict)
-        for m in l:
+        for m in list:
             ret[m[_FLD_NODE_META_OUTER_KEY]][m[_FLD_NODE_META_KEY]] = m[_FLD_NODE_META_VALUE]
         return dict(ret)  # some libs don't play nice with default dict, in particular maps
 
@@ -732,6 +735,7 @@ class ArangoSampleStorage:
         acls = doc[_FLD_ACLS]
         return SampleACL(
             UserID(acls[_FLD_OWNER]),
+            self._timestamp_to_datetime(doc[_FLD_ACL_UPDATE_TIME]),
             [UserID(u) for u in acls[_FLD_ADMIN]],
             [UserID(u) for u in acls[_FLD_WRITE]],
             [UserID(u) for u in acls[_FLD_READ]])
@@ -754,13 +758,16 @@ class ArangoSampleStorage:
         '''
         _not_falsy(id_, 'id_')
         _not_falsy(acls, 'acls')
-
-        # could return a subset of s to save bandwith
+        # Could return a subset of s to save bandwith
+        # This will update the timestamp even for a noop. Maybe that's ok?
+        # Detecting a noop would make the query a lot more complicated. Don't worry about it for
+        # now.
         aql = f'''
             FOR s in @@col
                 FILTER s.{_FLD_ARANGO_KEY} == @id
                 FILTER s.{_FLD_ACLS}.{_FLD_OWNER} == @owner
-                UPDATE s WITH {{{_FLD_ACLS}: MERGE(s.{_FLD_ACLS}, @acls)}} IN @@col
+                UPDATE s WITH {{{_FLD_ACLS}: MERGE(s.{_FLD_ACLS}, @acls),
+                                {_FLD_ACL_UPDATE_TIME}: {acls.lastupdate.timestamp()}}} IN @@col
                 RETURN s
             '''
         bind_vars = {'@col': self._col_sample.name,
@@ -782,7 +789,7 @@ class ArangoSampleStorage:
 
     # TODO change acls with more granularity
 
-    def create_data_link(self, link: DataLink, update: bool = False):
+    def create_data_link(self, link: DataLink, update: bool = False) -> Optional[UUID]:
         '''
         Link data in the workspace to a sample.
         Each data unit can be linked to only one sample at a time. Expired links may exist to
@@ -802,6 +809,7 @@ class ArangoSampleStorage:
         :param link: the link to save, which cannot be expired.
         :param update: if the link from the object already exists and is linked to a different
             sample, update the link. If it is linked to the same sample take no action.
+        :returns: The ID of the link that is expired as part of the update process, if any.
 
         :raises NoSuchSampleError: if the sample does not exist.
         :raises NoSuchSampleVersionError: if the sample version does not exist.
@@ -857,7 +865,7 @@ class ArangoSampleStorage:
                 oldlink = self._doc_to_link(oldlinkdoc)
                 if link.is_equivalent(oldlink):
                     self._abort_transaction(tdb)
-                    return  # I don't like having a return in the middle of the method, but
+                    return None  # I don't like having a return in the middle of the method, but
                     # the alternative seems to be worse
 
                 # See the notes in the expire method, many are relevant here.
@@ -896,6 +904,7 @@ class ArangoSampleStorage:
             self._commit_transaction(tdb)
         finally:
             self._abort_transaction(tdb)
+        return UUID(oldlinkdoc[_FLD_LINK_ID]) if oldlinkdoc else None
 
     def _commit_transaction(self, transaction_db):
         try:
@@ -967,7 +976,7 @@ class ArangoSampleStorage:
         # links. Might not work in a NOT though. Alternate formulation is
         # (d.creatd >= @created AND d.created <= @expired) OR
         # (d.expired >= @created AND d.expired <= @expired)
-        q = (f'''
+        q = ('''
                 FOR d in @@col
              ''' +
              filters +
@@ -1236,8 +1245,8 @@ class ArangoSampleStorage:
     def _find_links_via_aql(self, query, bind_vars):
         duids = []
         try:
-            for l in self._db.aql.execute(query, bind_vars=bind_vars):
-                duids.append(self._doc_to_link(l))
+            for link in self._db.aql.execute(query, bind_vars=bind_vars):
+                duids.append(self._doc_to_link(link))
         except _arango.exceptions.AQLQueryExecuteError as e:  # this is a pain to test
             raise _SampleStorageError('Connection to database failed: ' + str(e)) from e
         return duids  # a maxium of 10k can be returned based on the link creation function

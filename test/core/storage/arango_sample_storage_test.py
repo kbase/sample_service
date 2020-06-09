@@ -688,7 +688,7 @@ def test_save_and_get_sample(samplestorage):
     assert samplestorage.get_sample(id_) == SavedSample(
         id_, UserID('auser'), [n1, n2, n3, n4], dt(8), 'foo', 1)
 
-    assert samplestorage.get_sample_acls(id_) == SampleACL(UserID('auser'))
+    assert samplestorage.get_sample_acls(id_) == SampleACL(UserID('auser'), dt(8))
 
 
 def test_save_sample_fail_bad_input(samplestorage):
@@ -1031,24 +1031,27 @@ def test_replace_sample_acls(samplestorage):
 
     samplestorage.replace_sample_acls(id_, SampleACL(
         UserID('user'),
+        dt(56),
         [UserID('foo'), UserID('bar')],
         [UserID('baz'), UserID('bat')],
         [UserID('whoo')]))
 
     assert samplestorage.get_sample_acls(id_) == SampleACL(
         UserID('user'),
+        dt(56),
         [UserID('foo'), UserID('bar')],
         [UserID('baz'), UserID('bat')],
         [UserID('whoo')])
 
-    samplestorage.replace_sample_acls(id_, SampleACL(UserID('user'), write=[UserID('baz')]))
+    samplestorage.replace_sample_acls(id_, SampleACL(UserID('user'), dt(83), write=[UserID('baz')]))
 
-    assert samplestorage.get_sample_acls(id_) == SampleACL(UserID('user'), write=[UserID('baz')])
+    assert samplestorage.get_sample_acls(id_) == SampleACL(
+        UserID('user'), dt(83), write=[UserID('baz')])
 
 
 def test_replace_sample_acls_fail_bad_args(samplestorage):
     with raises(Exception) as got:
-        samplestorage.replace_sample_acls(None, SampleACL(UserID('user')))
+        samplestorage.replace_sample_acls(None, SampleACL(UserID('user'), dt(1)))
     assert_exception_correct(got.value, ValueError(
         'id_ cannot be a value that evaluates to false'))
 
@@ -1067,7 +1070,7 @@ def test_replace_sample_acls_fail_no_sample(samplestorage):
     id2 = uuid.UUID('1234567890abcdef1234567890abcdea')
 
     with raises(Exception) as got:
-        samplestorage.replace_sample_acls(id2, SampleACL(UserID('user')))
+        samplestorage.replace_sample_acls(id2, SampleACL(UserID('user'), dt(1)))
     assert_exception_correct(got.value, NoSuchSampleError(str(id2)))
 
 
@@ -1086,7 +1089,8 @@ def test_replace_sample_acls_fail_owner_changed(samplestorage):
         bind_vars={'@col': 'samples', 'acls': {'owner': 'user2'}})
 
     with raises(Exception) as got:
-        samplestorage.replace_sample_acls(id_, SampleACL(UserID('user'), write=[UserID('foo')]))
+        samplestorage.replace_sample_acls(
+            id_, SampleACL(UserID('user'), dt(1), write=[UserID('foo')]))
     assert_exception_correct(got.value, OwnerChangedError())
 
 
@@ -1100,40 +1104,40 @@ def test_create_and_get_data_link(samplestorage):
     assert samplestorage.save_sample(
         SavedSample(id2, UserID('user'), [SampleNode('mynode2')], dt(3), 'foo')) is True
 
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde1'),
         DataUnitID(UPA('5/89/32')),
         SampleNodeAddress(SampleAddress(id1, 2), 'mynode1'),
         dt(500),
         UserID('usera'))
-    )
+    ) is None
 
     # test different workspace object and different sample version
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde2'),
         DataUnitID(UPA('42/42/42'), 'dataunit1'),
         SampleNodeAddress(SampleAddress(id1, 1), 'mynode'),
         dt(600),
         UserID('userb'))
-    )
+    ) is None
 
     # test data unit vs just UPA, different sample, and expiration date
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde3'),
         DataUnitID(UPA('5/89/32'), 'dataunit2'),
         SampleNodeAddress(SampleAddress(id2, 1), 'mynode2'),
         dt(700),
         UserID('u'))
-    )
+    ) is None
 
     # test data units don't collide if they have different names
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde4'),
         DataUnitID(UPA('5/89/32'), 'dataunit1'),
         SampleNodeAddress(SampleAddress(id1, 1), 'mynode'),
         dt(800),
         UserID('userd'))
-    )
+    ) is None
 
     # this is naughty
     verdoc1 = samplestorage._col_version.find({'id': str(id1), 'ver': 1}).next()
@@ -1288,23 +1292,23 @@ def test_creaate_data_link_with_update_no_extant_link(samplestorage):
     assert samplestorage.save_sample(SavedSample(
         id1, UserID('user'), [SampleNode('mynode'), SampleNode('mynode1')], dt(1), 'foo')) is True
 
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde1'),
         DataUnitID(UPA('5/89/32')),
         SampleNodeAddress(SampleAddress(id1, 1), 'mynode'),
         dt(500),
         UserID('usera')),
         update=True
-    )
+    ) is None
 
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde2'),
         DataUnitID(UPA('5/89/32'), 'dataunit1'),
         SampleNodeAddress(SampleAddress(id1, 1), 'mynode1'),
         dt(550),
         UserID('user')),
         update=True
-    )
+    ) is None
 
     # this is naughty
     verdoc1 = samplestorage._col_version.find({'id': str(id1), 'ver': 1}).next()
@@ -1390,41 +1394,41 @@ def test_create_data_link_with_update_noop(samplestorage):
     assert samplestorage.save_sample(SavedSample(
         id1, UserID('user'), [SampleNode('mynode'), SampleNode('mynode1')], dt(1), 'foo')) is True
 
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde1'),
         DataUnitID(UPA('5/89/32')),
         SampleNodeAddress(SampleAddress(id1, 1), 'mynode'),
         dt(500),
         UserID('usera'))
-    )
+    ) is None
 
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde2'),
         DataUnitID(UPA('5/89/32'), 'dataunit1'),
         SampleNodeAddress(SampleAddress(id1, 1), 'mynode1'),
         dt(550),
         UserID('user'))
-    )
+    ) is None
 
     # expect noop
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde3'),
         DataUnitID(UPA('5/89/32')),
         SampleNodeAddress(SampleAddress(id1, 1), 'mynode'),
         dt(600),
         UserID('userb')),
         update=True
-    )
+    ) is None
 
     # expect noop
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde4'),
         DataUnitID(UPA('5/89/32'), 'dataunit1'),
         SampleNodeAddress(SampleAddress(id1, 1), 'mynode1'),
         dt(700),
         UserID('userc')),
         update=True
-    )
+    ) is None
 
     # this is naughty
     verdoc1 = samplestorage._col_version.find({'id': str(id1), 'ver': 1}).next()
@@ -1508,39 +1512,39 @@ def test_create_data_link_with_update(samplestorage):
         id1, UserID('user'), [SampleNode('mynode'), SampleNode('mynode1'), SampleNode('mynode2')],
         dt(1), 'foo')) is True
 
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde1'),
         DataUnitID(UPA('5/89/32')),
         SampleNodeAddress(SampleAddress(id1, 1), 'mynode'),
         dt(500),
         UserID('usera'))
-    )
+    ) is None
 
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde2'),
         DataUnitID(UPA('5/89/32'), 'dataunit1'),
         SampleNodeAddress(SampleAddress(id1, 1), 'mynode1'),
         dt(550),
         UserID('user'))
-    )
+    ) is None
 
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde3'),
         DataUnitID(UPA('5/89/32')),
         SampleNodeAddress(SampleAddress(id1, 1), 'mynode1'),  # update the node
         dt(600),
         UserID('userb')),
         update=True
-    )
+    ) == uuid.UUID('1234567890abcdef1234567890abcde1')
 
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.UUID('1234567890abcdef1234567890abcde4'),
         DataUnitID(UPA('5/89/32'), 'dataunit1'),
         SampleNodeAddress(SampleAddress(id1, 1), 'mynode2'),  # update the node
         dt(700),
         UserID('userc')),
         update=True
-    )
+    ) == uuid.UUID('1234567890abcdef1234567890abcde2')
 
     # this is naughty
     verdoc1 = samplestorage._col_version.find({'id': str(id1), 'ver': 1}).next()
@@ -1708,13 +1712,13 @@ def test_create_data_link_correct_missing_versions(samplestorage):
     samplestorage._col_version.update_match({}, {'ver': -1})
     samplestorage._col_nodes.update_match({'name': 'kid2'}, {'ver': -1})
 
-    samplestorage.create_data_link(DataLink(
+    assert samplestorage.create_data_link(DataLink(
         uuid.uuid4(),
         DataUnitID(UPA('5/89/32')),
         SampleNodeAddress(SampleAddress(id_, 1), 'kid1'),
         dt(500),
         UserID('user'))
-    )
+    ) is None
 
     assert samplestorage._col_version.count() == 1
     assert samplestorage._col_ver_edge.count() == 1
@@ -2630,7 +2634,7 @@ def test_expire_data_link_fail_race_condition(samplestorage):
 
     # ok, we have the link doc from the db. This is what part 1 of the code does, and then
     # passes to part 2.
-    linkdoc = samplestorage._col_data_link.get(f'1_1_1')
+    linkdoc = samplestorage._col_data_link.get('1_1_1')
 
     # Now we simulate a race condition by expiring that link and calling part 2 of the expire
     # method. Part 2 should fail without modifying the links collection.
