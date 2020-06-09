@@ -345,9 +345,9 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
         raise ValueError('ancestor_term must be a string')
 
     endpoint=d.get('kbase_endpoint')
-    if not ancestor_term:
+    if not endpoint:
         raise ValueError('kbase_endpoint is a required paramter')
-    if type(ancestor_term) != str:
+    if type(endpoint) != str:
         raise ValueError('kbase_endpoint must be a string')
 
     srv_wiz_url=endpoint.strip('/') + '/service_wizard'
