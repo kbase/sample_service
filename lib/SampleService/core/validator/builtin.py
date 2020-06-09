@@ -22,7 +22,6 @@ from pint import DefinitionSyntaxError as _DefinitionSyntaxError
 from SampleService.core.core_types import PrimitiveType
 from installed_clients.OntologyAPIClient import OntologyAPI
 from installed_clients.baseclient import ServerError
-import os
 
 
 def _check_unknown_keys(d, expected):
@@ -326,12 +325,12 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
 
     The 'ancestor_term' parameter is required and must be a string. It is the ancestor name.
 
+    The 'kbase_endpoint' parameter is required and must be a string. It is kbase endpoint url for getting OntologyAPI service.
+
     :param d: the configuration map for the callable.
     :returns: a callable that validates metadata maps.
     '''
-    _check_unknown_keys(d, {'ontology', 'ancestor_term'})
-
-    srv_wiz_url=os.environ.get('KBASE_ENDPOINT', 'https://kbase.us/services/service_wizard').strip('/') + '/service_wizard'
+    _check_unknown_keys(d, {'ontology', 'ancestor_term', 'kbase_endpoint'})
 
     ontology = d.get('ontology')
     if not ontology:
@@ -345,14 +344,29 @@ def ontology_has_ancestor(d: Dict[str, Any]) -> Callable[[str, Dict[str, Primiti
     if type(ancestor_term) != str:
         raise ValueError('ancestor_term must be a string')
 
+    endpoint=d.get('kbase_endpoint')
+    if not ancestor_term:
+        raise ValueError('kbase_endpoint is a required paramter')
+    if type(ancestor_term) != str:
+        raise ValueError('kbase_endpoint must be a string')
+
+    srv_wiz_url=endpoint.strip('/') + '/service_wizard'
+    oac=None
+    try:
+        oac=OntologyAPI(srv_wiz_url)
+        if oac.status().get('state') != 'OK':
+            raise ValueError('the status of ontology api service is not ok')
+    except ConnectionError as err:
+        raise ValueError('failed connect to ontology api through kbase_endpoint')
+
+
     def _get_ontology_ancestors(ontology, val):
         try:
-            oac=OntologyAPI(srv_wiz_url)
             ret=oac.get_ancestors({"id": val, "ns": ontology})
             return list(map(lambda x: x["term"]["id"], ret["results"]))
         except ServerError as err:
             if 'InvalidParamsError' in err.data:
-                raise ValueError(f'ontology {ontology} is not found')
+                raise ValueError(f'ontology {ontology} is not valid')
             else:
                 raise
     
