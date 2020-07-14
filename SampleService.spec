@@ -65,13 +65,18 @@ module SampleService {
     /* Metadata attached to a sample. */
     typedef mapping<metadata_key, metadata_value> metadata;
 
-    /* A metadata key and value as it exists at the data source. This key and value represents
-        the original state of the metadata before it was tranformed for ingestion by the sample
-        service.
+    /* Information about a metadata key as it appeared at the data source.
+        The source key and value represents the original state of the metadata before it was
+        tranformed for ingestion by the sample service.
+
+        key - the metadata key.
+        skey - the key as it appeared at the data source.
+        svalue - the value as it appeared at the data source.
      */
     typedef structure {
         metadata_key key;
-        metadata_value value;
+        metadata_key skey;
+        metadata_value svalue;
     } SourceMetadata;
 
     /* A KBase Workspace service Unique Permanent Address (UPA). E.g. 5/6/7 where 5 is the
@@ -90,12 +95,12 @@ module SampleService {
         type - the type of the node.
         meta_controlled - metadata restricted by the sample controlled vocabulary and validators.
         source_meta - the pre-transformation keys and values of the controlled metadata at the
-            data source mapped by the controlled metadata key. In some cases the source metadata
+            data source for controlled metadata keys. In some cases the source metadata
             may be transformed prior to ingestion by the Sample Service; the contents of this
             data structure allows for reconstructing the original representation. The metadata
             here is not validated other than basic size checks and is provided on an
-            informational basis only. The mapping keys must be a subset of the meta_controlled
-            mapping keys.
+            informational basis only. The metadata keys in the SourceMetadata data structure
+            must be a subset of the meta_controlled mapping keys.
         meta_user - unrestricted metadata.
      */
     typedef structure {
@@ -103,7 +108,7 @@ module SampleService {
         node_id parent;
         samplenode_type type;
         metadata meta_controlled;
-        mapping<metadata_key, SourceMetadata> source_meta;
+        list<SourceMetadata> source_meta;
         metadata meta_user;
     } SampleNode;
 
