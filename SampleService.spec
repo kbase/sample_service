@@ -46,15 +46,33 @@ module SampleService {
     typedef string metadata_key;
 
     /* A key for a value associated with a piece of metadata. Less than 1000 unicode characters.
-        Examples: units, value, species   
+        Examples: units, value, species
      */
     typedef string metadata_value_key;
 
-    /* Metadata attached to a sample.
-        The UnspecifiedObject map values MUST be a primitive type - either int, float, string,
-        or equivalent typedefs.
+    /* A metadata value, represented by a mapping of value keys to primitive values. An example for
+        a location metadata key might be:
+        {
+         "name": "Castle Geyser",
+         "lat": 44.463816,
+         "long": -110.836471
+         }
+        "primitive values" means an int, float, string, or equivalent typedefs. Including any
+        collection types is an error.
      */
-    typedef mapping<metadata_key, mapping<metadata_value_key, UnspecifiedObject>> metadata;
+    typedef mapping<metadata_value_key, UnspecifiedObject> metadata_value;
+
+    /* Metadata attached to a sample. */
+    typedef mapping<metadata_key, metadata_value> metadata;
+
+    /* A metadata key and value as it exists at the data source. This key and value represents
+        the original state of the metadata before it was tranformed for ingestion by the sample
+        service.
+     */
+    typedef structure {
+        metadata_key key;
+        metadata_value value;
+    } SourceMetadata;
 
     /* A KBase Workspace service Unique Permanent Address (UPA). E.g. 5/6/7 where 5 is the
         workspace ID, 6 the object ID, and 7 the object version. */
@@ -71,6 +89,13 @@ module SampleService {
             BioReplicate nodes, do not have a parent.
         type - the type of the node.
         meta_controlled - metadata restricted by the sample controlled vocabulary and validators.
+        source_meta - the pre-transformation keys and values of the controlled metadata at the
+            data source mapped by the controlled metadata key. In some cases the source metadata
+            may be transformed prior to ingestion by the Sample Service; the contents of this
+            data structure allows for reconstructing the original representation. The metadata
+            here is not validated other than basic size checks and is provided on an
+            informational basis only. The mapping keys must be a subset of the meta_controlled
+            mapping keys.
         meta_user - unrestricted metadata.
      */
     typedef structure {
@@ -78,6 +103,7 @@ module SampleService {
         node_id parent;
         samplenode_type type;
         metadata meta_controlled;
+        mapping<metadata_key, SourceMetadata> source_meta;
         metadata meta_user;
     } SampleNode;
 
