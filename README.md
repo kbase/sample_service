@@ -301,7 +301,7 @@ The configuration file uses the YAML format and is validated against the followi
                     'key_metadata': {
                         'type': 'object',
                         'additionalProperties': {
-                            'type': ['number', 'boolean', 'string', 'null']
+                            'type': ['number', 'boolean', 'string', 'null', 'object']
                         }
                     },
                     'validators': {
