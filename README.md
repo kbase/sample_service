@@ -301,7 +301,11 @@ The configuration file uses the YAML format and is validated against the followi
                     'key_metadata': {
                         'type': 'object',
                         'additionalProperties': {
-                            'type': ['number', 'boolean', 'string', 'null', 'object']
+                            'type': ['number', 'boolean', 'string', 'null']
+                        },
+                        'properties': {
+                            'mappings': {'type': 'object'},
+                            'uploader_mappings': {'type': 'object'}
                         }
                     },
                     'validators': {
