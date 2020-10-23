@@ -239,10 +239,10 @@ def test_sample_node_build_fail_metadata():
         '{} metadata value associated with metadata key bat and value key whee has a ' +
         'character at index 0 that is a control character.')
 
-    # 150001B when serialized to json
-    meta = {str(i): {'b': '𐎦' * 25} for i in range(1272)}
+    # 100001B when serialized to json
+    meta = {str(i): {'b': '𐎦' * 25} for i in range(848)}
     meta['a'] = {'b': 'c' * 31}
-    _sample_node_build_fail_metadata(meta, "{} metadata is larger than maximum of 150000B")
+    _sample_node_build_fail_metadata(meta, "{} metadata is larger than maximum of 100000B")
 
 
 def _sample_node_build_fail_metadata(meta, expected):
@@ -267,11 +267,11 @@ def test_sample_node_build_fail_source_metadata():
         [SourceMetadata('k', 'k1', {'a': 'b'}), SourceMetadata('k', 'k2', {'a': 2})],
         IllegalParameterError('Duplicate source metadata key: k'))
 
-    # 150001KB when the size calculation routine is run
-    smeta = [SourceMetadata(str(i), 'sksksk', {'x': '𐎦' * 25}) for i in range(1272)]
+    # 100001KB when the size calculation routine is run
+    smeta = [SourceMetadata(str(i), 'sksksk', {'x': '𐎦' * 25}) for i in range(848)]
     smeta.append(SourceMetadata('a', 'b' * 36, {'x': 'y'}))
     _sample_node_build_fail_source_metadata(smeta, IllegalParameterError(
-        'Source metadata is larger than maximum of 150000B'))
+        'Source metadata is larger than maximum of 100000B'))
 
 
 def _sample_node_build_fail_source_metadata(meta, expected, cmeta=None):

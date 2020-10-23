@@ -27,7 +27,7 @@ from SampleService.core.user import UserID
 _MAX_SAMPLE_NAME_LEN = 256
 _MAX_SAMPLE_NODES = 10000
 
-_META_MAX_SIZE_B = 150000  # based on serialized json
+_META_MAX_SIZE_B = 100000  # based on serialized json
 _META_MAX_KEY_SIZE = 256
 _META_MAX_VALUE_SIZE = 8192
 
