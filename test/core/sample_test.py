@@ -80,7 +80,7 @@ def test_source_metadata_build_fail():
         'somekey', 'skey', {'whee': 'a' * 255 + 'f' * 770},
         IllegalParameterError(
             'Source metadata has a value associated with metadata key somekey and value key ' +
-            f"whee starting with {'a' * 255 + 'f'} that exceeds maximum length of 1024"))
+            f"whee starting with {'a' * 255 + 'f'} that exceeds maximum length of 8192"))
     _source_metadata_build_fail('k3', 'skey', {'whee': 'whoop\bbutt'}, IllegalParameterError(
         'Source metadata value associated with metadata key k3 and value key whee has a ' +
         'character at index 5 that is a control character.'))
@@ -133,7 +133,7 @@ def test_sample_node_build():
 
     sn = SampleNode('a' * 256, SubSampleType.TECHNICAL_REPLICATE, 'b' * 256,
                     {'a' * 256: {'bar': 'baz', 'bat': 'wh\tee'},
-                     'wugga': {'a': 'b' * 1024},
+                     'wugga': {'a': 'b' * 8192},
                      # tests that having a controlled key doesn't force a source key
                      'z': {'u': 'v'}},
                     {'a': {'b' * 256: 'fo\no', 'c': 1, 'd': 1.5, 'e': False}},
@@ -143,7 +143,7 @@ def test_sample_node_build():
     assert sn.type == SubSampleType.TECHNICAL_REPLICATE
     assert sn.parent == 'b' * 256
     assert sn.controlled_metadata == {'a' * 256: {'bar': 'baz', 'bat': 'wh\tee'},
-                                      'wugga': {'a': 'b' * 1024},
+                                      'wugga': {'a': 'b' * 8192},
                                       'z': {'u': 'v'}}
     assert sn.user_metadata == {'a': {'b' * 256: 'fo\no', 'c': 1, 'd': 1.5, 'e': False}}
     assert sn.source_metadata == (SourceMetadata('a' * 256, 'sk', {'a': 'b'}),
@@ -230,19 +230,19 @@ def test_sample_node_build_fail_metadata():
         'index 2 that is a control character.')
 
     _sample_node_build_fail_metadata(
-        {'bat': {'whee': 'a' * 255 + 'f' * 770}},
+        {'bat': {'whee': 'a' * 255 + 'f' * 770 + 's' * 7168}},
         '{} metadata has a value associated with metadata key bat and value key whee starting ' +
-        f"with {'a' * 255 + 'f'} that exceeds maximum length of 1024")
+        f"with {'a' * 255 + 'f'} that exceeds maximum length of 8192")
 
     _sample_node_build_fail_metadata(
         {'bat': {'whee': '\bwhoopbutt'}},
         '{} metadata value associated with metadata key bat and value key whee has a ' +
         'character at index 0 that is a control character.')
 
-    # 100001B when serialized to json
-    meta = {str(i): {'b': '𐎦' * 25} for i in range(848)}
+    # 150001B when serialized to json
+    meta = {str(i): {'b': '𐎦' * 25} for i in range(1272)}
     meta['a'] = {'b': 'c' * 31}
-    _sample_node_build_fail_metadata(meta, "{} metadata is larger than maximum of 100000B")
+    _sample_node_build_fail_metadata(meta, "{} metadata is larger than maximum of 150000B")
 
 
 def _sample_node_build_fail_metadata(meta, expected):
@@ -267,11 +267,11 @@ def test_sample_node_build_fail_source_metadata():
         [SourceMetadata('k', 'k1', {'a': 'b'}), SourceMetadata('k', 'k2', {'a': 2})],
         IllegalParameterError('Duplicate source metadata key: k'))
 
-    # 100001KB when the size calculation routine is run
-    smeta = [SourceMetadata(str(i), 'sksksk', {'x': '𐎦' * 25}) for i in range(848)]
+    # 150001KB when the size calculation routine is run
+    smeta = [SourceMetadata(str(i), 'sksksk', {'x': '𐎦' * 25}) for i in range(1272)]
     smeta.append(SourceMetadata('a', 'b' * 36, {'x': 'y'}))
     _sample_node_build_fail_source_metadata(smeta, IllegalParameterError(
-        'Source metadata is larger than maximum of 100000B'))
+        'Source metadata is larger than maximum of 150000B'))
 
 
 def _sample_node_build_fail_source_metadata(meta, expected, cmeta=None):
