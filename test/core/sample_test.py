@@ -77,7 +77,7 @@ def test_source_metadata_build_fail():
         'Source metadata value key \twhee associated with metadata key k2 has a character at ' +
         'index 0 that is a control character.'))
     _source_metadata_build_fail(
-        'somekey', 'skey', {'whee': 'a' * 255 + 'f' * 770},
+        'somekey', 'skey', {'whee': 'a' * 255 + 'f' * 7938},
         IllegalParameterError(
             'Source metadata has a value associated with metadata key somekey and value key ' +
             f"whee starting with {'a' * 255 + 'f'} that exceeds maximum length of 8192"))
