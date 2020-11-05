@@ -68,6 +68,37 @@ def _init_fail(storage, lookup, meta, ws, now, uuid_gen, expected):
     assert_exception_correct(got.value, expected)
 
 
+def test_validate_sample_with_name():
+    _validate_sample(None, True)
+    _validate_sample('foo', False)
+
+
+def _validate_sample(name, as_admin):
+    storage = create_autospec(ArangoSampleStorage, spec_set=True, instance=True)
+    lu = create_autospec(KBaseUserLookup, spec_set=True, instance=True)
+    meta = create_autospec(MetadataValidatorSet, spec_set=True, instance=True)
+    ws = create_autospec(WS, spec_set=True, instance=True)
+    kafka = create_autospec(KafkaNotifier, spec_set=True, instance=True)
+    s = Samples(storage, lu, meta, ws, kafka, now=nw,
+                uuid_gen=lambda: UUID('1234567890abcdef1234567890abcdef'))
+    s.validate_sample(Sample([
+            SampleNode(
+                'foo',
+                controlled_metadata={'key1': {'val': 'foo'}, 'key2': {'val': 'bar'}},
+                user_metadata={'key_not_in_validator_map': {'val': 'yay'},
+                               'key1': {'val': 'wrong'}}
+                ),
+            SampleNode(
+                'foo2',
+                controlled_metadata={'key3': {'val': 'foo'}, 'key4': {'val': 'bar'}},
+                )
+            ],
+            name),
+        UserID('auser'),
+        as_admin=as_admin
+    )
+
+
 def test_save_sample():
     _save_sample_with_name(None, True)
     _save_sample_with_name('bar', False)

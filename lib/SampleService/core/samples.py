@@ -499,3 +499,12 @@ class Samples:
         '''
         # if we expose this to users need to add ACL checking. Don't see a use case ATM.
         return self._storage.get_data_link(_not_falsy(link_id, 'link_id'))
+
+    def validate_sample(self, sample: Sample):
+        '''
+        This method performs only the validation steps on a sample
+
+        :param sample: the sample to validate
+        '''
+        _not_falsy(sample, 'sample')
+        self._validate_metadata(sample)

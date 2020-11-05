@@ -499,4 +499,19 @@ module SampleService {
        for the service.
      */
     funcdef get_data_link(GetDataLinkParams params) returns(DataLink link) authentication required;
+
+    /* Provide sample and run through the validation steps, but without saving them. Allows all the samples to be evaluated for validity first so potential errors can be addressed.
+    */
+
+    typedef structure {
+        Sample sample;
+        boolean as_admin;
+        user as_user;
+    } ValidateSampleParams;
+
+    typedef structure {
+        mapping<sample_id, string> errors;
+    } ValidateSampleResults;
+
+    funcdef validate_sample(ValidateSampleParams params) returns () authentication required;
 };
