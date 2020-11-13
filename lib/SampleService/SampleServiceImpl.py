@@ -53,7 +53,7 @@ Note that usage of the administration flags will be logged by the service.
     # the latter method is running.
     ######################################### noqa
     VERSION = "0.1.0-alpha23"
-    GIT_URL = "https://github.com/slebras/sample_service.git"
+    GIT_URL = "https://github.com/kbase/sample_service.git"
     GIT_COMMIT_HASH = "7b68401625ee4e4e65a8a6a474c9fc79a4cb57b3"
 
     #BEGIN_CLASS_HEADER
