@@ -505,13 +505,11 @@ module SampleService {
 
     typedef structure {
         Sample sample;
-        boolean as_admin;
-        user as_user;
     } ValidateSampleParams;
 
     typedef structure {
-        mapping<sample_id, string> errors;
+        mapping<sample_name, list<string>> errors;
     } ValidateSampleResults;
 
-    funcdef validate_sample(ValidateSampleParams params) returns () authentication required;
+    funcdef validate_sample(ValidateSampleParams params) returns (ValidateSampleResults results) authentication required;
 };

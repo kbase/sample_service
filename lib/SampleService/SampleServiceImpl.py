@@ -54,7 +54,7 @@ Note that usage of the administration flags will be logged by the service.
     ######################################### noqa
     VERSION = "0.1.0-alpha23"
     GIT_URL = "https://github.com/slebras/sample_service.git"
-    GIT_COMMIT_HASH = "695bb800cb3babe2084e93c260affcd10018d3e7"
+    GIT_COMMIT_HASH = "7b68401625ee4e4e65a8a6a474c9fc79a4cb57b3"
 
     #BEGIN_CLASS_HEADER
     #END_CLASS_HEADER
@@ -1018,18 +1018,22 @@ Note that usage of the administration flags will be logged by the service.
         :returns: instance of type "ValidateSampleResults" -> structure:
            parameter "errors" of mapping from type "sample_id" (A Sample ID.
            Must be globally unique. Always assigned by the Sample service.)
-           to String
+           to list of String
         """
         # ctx is the context object
         # return variables are: results
         #BEGIN validate_sample
         sample, id_, prev_ver = _create_sample_params(params)
-        as_admin, user = _get_admin_request_from_object(params, 'as_admin', 'as_user')
-        _check_admin(
-            self._user_lookup, ctx[_CTX_TOKEN], _AdminPermission.FULL,
-            # pretty annoying to test ctx.log_info is working, do it manually
-            'create_sample', ctx.log_info, as_user=user, skip_check=not as_admin)
-        self._samples.validate_sample(sample)
+        # as_admin, user = _get_admin_request_from_object(params, 'as_admin', 'as_user')
+        # _check_admin(
+        #     self._user_lookup, ctx[_CTX_TOKEN], _AdminPermission.FULL,
+        #     # pretty annoying to test ctx.log_info is working, do it manually
+        #     'create_sample', ctx.log_info, as_user=user, skip_check=not as_admin)
+        error_strings = self._samples.validate_sample(sample)
+        if error_strings:
+          results = {sample.name: error_strings}
+        else:
+          results = {}
         #END validate_sample
 
         # At some point might do deeper type checking...

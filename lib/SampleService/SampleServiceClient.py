@@ -801,7 +801,7 @@ class SampleService(object):
         :returns: instance of type "ValidateSampleResults" -> structure:
            parameter "errors" of mapping from type "sample_id" (A Sample ID.
            Must be globally unique. Always assigned by the Sample service.)
-           to String
+           to list of String
         """
         return self._client.call_method('SampleService.validate_sample',
                                         [params], self._service_ver, context)

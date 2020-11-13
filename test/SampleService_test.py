@@ -4400,3 +4400,32 @@ def _kafka_notifier_expired_link_fail(notifier, sample, expected):
     with raises(Exception) as got:
         notifier.notify_expired_link(sample)
     assert_exception_correct(got.value, expected)
+
+
+def test_validate_sample(sample_port):
+    _validate_sample_as_admin(sample_port, None, TOKEN2, USER2)
+
+
+def _validate_sample_as_admin(sample_port, as_user, get_token, expected_user):    
+    url = f'http://localhost:{sample_port}'
+
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN2), json={
+        'method': 'SampleService.validate_sample',
+        'version': '1.1',
+        'id': '67',
+        'params': [{
+            'sample': {
+                'name': 'mysample',
+                'node_tree': [{
+                    'id': 'root',
+                    'type': 'BioReplicate',
+                    'meta_controlled': {'foo': {'bar': 'baz'}},
+                    'meta_user': {'a': {'b': 'c'}}
+                }]
+            }
+        }]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    ret_json = ret.json()['result'][0]
+    assert mysample not in ret_json['errors']
