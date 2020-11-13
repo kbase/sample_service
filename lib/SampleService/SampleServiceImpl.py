@@ -11,6 +11,7 @@ from SampleService.core.api_translation import acls_from_dict as _acls_from_dict
 from SampleService.core.api_translation import acls_to_dict as _acls_to_dict
 from SampleService.core.api_translation import sample_to_dict as _sample_to_dict
 from SampleService.core.api_translation import create_sample_params as _create_sample_params
+from SampleService.core.api_translation import validate_sample_params as _validate_sample_params
 from SampleService.core.api_translation import check_admin as _check_admin
 from SampleService.core.api_translation import (
     get_static_key_metadata_params as _get_static_key_metadata_params,
@@ -1023,17 +1024,12 @@ Note that usage of the administration flags will be logged by the service.
         # ctx is the context object
         # return variables are: results
         #BEGIN validate_sample
-        sample, id_, prev_ver = _create_sample_params(params)
-        # as_admin, user = _get_admin_request_from_object(params, 'as_admin', 'as_user')
-        # _check_admin(
-        #     self._user_lookup, ctx[_CTX_TOKEN], _AdminPermission.FULL,
-        #     # pretty annoying to test ctx.log_info is working, do it manually
-        #     'create_sample', ctx.log_info, as_user=user, skip_check=not as_admin)
-        error_strings = self._samples.validate_sample(sample)
-        if error_strings:
-          results = {sample.name: error_strings}
-        else:
-          results = {}
+        samples = _validate_sample_params(params)
+        results = {}
+        for sample in samples:
+          error_strings = self._samples.validate_sample(sample)
+          if error_strings:
+            results[sample.name] = error_strings
         #END validate_sample
 
         # At some point might do deeper type checking...

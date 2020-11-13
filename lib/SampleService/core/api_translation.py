@@ -191,6 +191,56 @@ def create_sample_params(params: Dict[str, Any]) -> Tuple[Sample, Optional[UUID]
     return (s, id_, pv)
 
 
+def validate_sample_params(params: Dict[str, Any]) -> Tuple[Sample, Optional[UUID], Optional[int]]:
+    '''
+    Process the input from the validate_sample API call and translate it into standard types.
+
+    :param params: The unmarshalled JSON recieved from the API as part of the create_sample
+        call.
+    :returns: A tuple of the sample to save, the UUID of the sample for which a new version should
+        be created or None if an entirely new sample should be created, and the previous version
+        of the sample expected when saving a new version.
+    :raises IllegalParameterError: if any of the arguments are illegal.
+    '''
+    _check_params(params)
+    if type(params.get('samples')) != dict:
+        raise _IllegalParameterError('params must contain samples key that maps to a structure')
+    samples = []
+    for s in params['samples']:
+        if type(s.get('node_tree')) != list:
+            raise _IllegalParameterError('sample node tree must be present and a list')
+        if s.get('name') is not None and type(s.get('name')) != str:
+            raise _IllegalParameterError('sample name must be omitted or a string')
+        nodes = []
+        for i, n in enumerate(s['node_tree']):
+            if type(n) != dict:
+                raise _IllegalParameterError(f'Node at index {i} is not a structure')
+            if type(n.get('id')) != str:
+                raise _IllegalParameterError(
+                    f'Node at index {i} must have an id key that maps to a string')
+            try:
+                type_ = _SubSampleType(n.get('type'))
+            except ValueError:
+                raise _IllegalParameterError(
+                    f'Node at index {i} has an invalid sample type: {n.get("type")}')
+            if n.get('parent') and type(n.get('parent')) != str:
+                raise _IllegalParameterError(
+                    f'Node at index {i} has a parent entry that is not a string')
+            mc = _check_meta(n.get('meta_controlled'), i, 'controlled metadata')
+            mu = _check_meta(n.get('meta_user'), i, 'user metadata')
+            sm = _check_source_meta(n.get('source_meta'), i)
+            try:
+                nodes.append(_SampleNode(n.get('id'), type_, n.get('parent'), mc, mu, sm))
+                # already checked for the missing param error above, for id
+            except _IllegalParameterError as e:
+                raise _IllegalParameterError(
+                    f'Error for node at index {i}: ' + _cast(str, e.message)) from e
+        s = Sample(nodes, s.get('name'))
+        samples.append(s)
+
+    return samples
+
+
 def _check_meta(m, index, name) -> Optional[Dict[str, Dict[str, PrimitiveType]]]:
     if not m:
         return None

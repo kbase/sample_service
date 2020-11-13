@@ -504,7 +504,7 @@ module SampleService {
     */
 
     typedef structure {
-        Sample sample;
+        list<Sample> samples;
     } ValidateSampleParams;
 
     typedef structure {

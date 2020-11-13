@@ -4414,7 +4414,7 @@ def _validate_sample_as_admin(sample_port, as_user, get_token, expected_user):
         'version': '1.1',
         'id': '67',
         'params': [{
-            'sample': {
+            'samples': [{
                 'name': 'mysample',
                 'node_tree': [{
                     'id': 'root',
@@ -4422,7 +4422,7 @@ def _validate_sample_as_admin(sample_port, as_user, get_token, expected_user):
                     'meta_controlled': {'foo': {'bar': 'baz'}},
                     'meta_user': {'a': {'b': 'c'}}
                 }]
-            }
+            }]
         }]
     })
     # print(ret.text)
