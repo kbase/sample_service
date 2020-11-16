@@ -191,9 +191,9 @@ def create_sample_params(params: Dict[str, Any]) -> Tuple[Sample, Optional[UUID]
     return (s, id_, pv)
 
 
-def validate_sample_params(params: Dict[str, Any]) -> Tuple[Sample, Optional[UUID], Optional[int]]:
+def validate_samples_params(params: Dict[str, Any]) -> List[Sample]:
     '''
-    Process the input from the validate_sample API call and translate it into standard types.
+    Process the input from the validate_samples API call and translate it into standard types.
 
     :param params: The unmarshalled JSON recieved from the API as part of the create_sample
         call.

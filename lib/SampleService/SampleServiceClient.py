@@ -711,15 +711,15 @@ class SampleService(object):
         return self._client.call_method('SampleService.get_data_link',
                                         [params], self._service_ver, context)
 
-    def validate_sample(self, params, context=None):
+    def validate_samples(self, params, context=None):
         """
-        :param params: instance of type "ValidateSampleParams" (Provide
+        :param params: instance of type "ValidateSamplesParams" (Provide
            sample and run through the validation steps, but without saving
            them. Allows all the samples to be evaluated for validity first so
            potential errors can be addressed.) -> structure: parameter
-           "sample" of type "Sample" (A Sample, consisting of a tree of
-           subsamples and replicates. id - the ID of the sample. user - the
-           user that saved the sample. node_tree - the tree(s) of sample
+           "samples" of list of type "Sample" (A Sample, consisting of a tree
+           of subsamples and replicates. id - the ID of the sample. user -
+           the user that saved the sample. node_tree - the tree(s) of sample
            nodes in the sample. The the roots of all trees must be
            BioReplicate nodes. All the BioReplicate nodes must be at the
            start of the list, and all child nodes must occur after their
@@ -795,15 +795,12 @@ class SampleService(object):
            type "sample_name" (A sample name. Must be less than 255
            characters.), parameter "save_date" of type "timestamp" (A
            timestamp in epoch milliseconds.), parameter "version" of type
-           "version" (The version of a sample. Always > 0.), parameter
-           "as_admin" of type "boolean" (A boolean value, 0 for false, 1 for
-           true.), parameter "as_user" of type "user" (A user's username.)
-        :returns: instance of type "ValidateSampleResults" -> structure:
-           parameter "errors" of mapping from type "sample_id" (A Sample ID.
-           Must be globally unique. Always assigned by the Sample service.)
-           to list of String
+           "version" (The version of a sample. Always > 0.)
+        :returns: instance of type "ValidateSamplesResults" -> structure:
+           parameter "errors" of mapping from type "sample_name" (A sample
+           name. Must be less than 255 characters.) to list of String
         """
-        return self._client.call_method('SampleService.validate_sample',
+        return self._client.call_method('SampleService.validate_samples',
                                         [params], self._service_ver, context)
 
     def status(self, context=None):

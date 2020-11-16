@@ -11,7 +11,7 @@ from SampleService.core.api_translation import acls_from_dict as _acls_from_dict
 from SampleService.core.api_translation import acls_to_dict as _acls_to_dict
 from SampleService.core.api_translation import sample_to_dict as _sample_to_dict
 from SampleService.core.api_translation import create_sample_params as _create_sample_params
-from SampleService.core.api_translation import validate_sample_params as _validate_sample_params
+from SampleService.core.api_translation import validate_samples_params as _validate_samples_params
 from SampleService.core.api_translation import check_admin as _check_admin
 from SampleService.core.api_translation import (
     get_static_key_metadata_params as _get_static_key_metadata_params,
@@ -54,8 +54,8 @@ Note that usage of the administration flags will be logged by the service.
     # the latter method is running.
     ######################################### noqa
     VERSION = "0.1.0-alpha23"
-    GIT_URL = "https://github.com/kbase/sample_service.git"
-    GIT_COMMIT_HASH = "7b68401625ee4e4e65a8a6a474c9fc79a4cb57b3"
+    GIT_URL = "https://github.com/slebras/sample_service.git"
+    GIT_COMMIT_HASH = "f106ff6807680b87363bbf5f6f163b24d1861d1c"
 
     #BEGIN_CLASS_HEADER
     #END_CLASS_HEADER
@@ -929,15 +929,15 @@ Note that usage of the administration flags will be logged by the service.
         # return the results
         return [link]
 
-    def validate_sample(self, ctx, params):
+    def validate_samples(self, ctx, params):
         """
-        :param params: instance of type "ValidateSampleParams" (Provide
+        :param params: instance of type "ValidateSamplesParams" (Provide
            sample and run through the validation steps, but without saving
            them. Allows all the samples to be evaluated for validity first so
            potential errors can be addressed.) -> structure: parameter
-           "sample" of type "Sample" (A Sample, consisting of a tree of
-           subsamples and replicates. id - the ID of the sample. user - the
-           user that saved the sample. node_tree - the tree(s) of sample
+           "samples" of list of type "Sample" (A Sample, consisting of a tree
+           of subsamples and replicates. id - the ID of the sample. user -
+           the user that saved the sample. node_tree - the tree(s) of sample
            nodes in the sample. The the roots of all trees must be
            BioReplicate nodes. All the BioReplicate nodes must be at the
            start of the list, and all child nodes must occur after their
@@ -1013,28 +1013,25 @@ Note that usage of the administration flags will be logged by the service.
            type "sample_name" (A sample name. Must be less than 255
            characters.), parameter "save_date" of type "timestamp" (A
            timestamp in epoch milliseconds.), parameter "version" of type
-           "version" (The version of a sample. Always > 0.), parameter
-           "as_admin" of type "boolean" (A boolean value, 0 for false, 1 for
-           true.), parameter "as_user" of type "user" (A user's username.)
-        :returns: instance of type "ValidateSampleResults" -> structure:
-           parameter "errors" of mapping from type "sample_id" (A Sample ID.
-           Must be globally unique. Always assigned by the Sample service.)
-           to list of String
+           "version" (The version of a sample. Always > 0.)
+        :returns: instance of type "ValidateSamplesResults" -> structure:
+           parameter "errors" of mapping from type "sample_name" (A sample
+           name. Must be less than 255 characters.) to list of String
         """
         # ctx is the context object
         # return variables are: results
-        #BEGIN validate_sample
-        samples = _validate_sample_params(params)
+        #BEGIN validate_samples
+        samples = _validate_samples_params(params)
         results = {}
         for sample in samples:
           error_strings = self._samples.validate_sample(sample)
           if error_strings:
             results[sample.name] = error_strings
-        #END validate_sample
+        #END validate_samples
 
         # At some point might do deeper type checking...
         if not isinstance(results, dict):
-            raise ValueError('Method validate_sample return value ' +
+            raise ValueError('Method validate_samples return value ' +
                              'results is not type dict as required.')
         # return the results
         return [results]
