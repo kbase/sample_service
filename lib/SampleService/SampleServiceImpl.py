@@ -55,7 +55,7 @@ Note that usage of the administration flags will be logged by the service.
     ######################################### noqa
     VERSION = "0.1.0-alpha23"
     GIT_URL = "https://github.com/slebras/sample_service.git"
-    GIT_COMMIT_HASH = "f106ff6807680b87363bbf5f6f163b24d1861d1c"
+    GIT_COMMIT_HASH = "3d61bb65ea93dd2737cad107640c2dea9e8d8cef"
 
     #BEGIN_CLASS_HEADER
     #END_CLASS_HEADER
@@ -1022,11 +1022,12 @@ Note that usage of the administration flags will be logged by the service.
         # return variables are: results
         #BEGIN validate_samples
         samples = _validate_samples_params(params)
-        results = {}
+        errors = {}
         for sample in samples:
           error_strings = self._samples.validate_sample(sample)
           if error_strings:
-            results[sample.name] = error_strings
+            errors[sample.name] = error_strings
+        results = {'errors': errors}
         #END validate_samples
 
         # At some point might do deeper type checking...

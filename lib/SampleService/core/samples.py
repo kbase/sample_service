@@ -124,7 +124,7 @@ class Samples:
         '''
         for i, n in enumerate(sample.nodes):
             try:
-                error_strings = self._metaval.validate_metadata(n.controlled_metadata, return_error_strings=return_error_strings)
+                error_strings = self._metaval.validate_metadata(n.controlled_metadata, return_error_strings)
             except _MetadataValidationError as e:
                 raise _MetadataValidationError(f'Node at index {i}: {e.message}') from e
         return error_strings

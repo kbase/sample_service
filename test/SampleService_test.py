@@ -4410,7 +4410,7 @@ def _validate_sample_as_admin(sample_port, as_user, get_token, expected_user):
     url = f'http://localhost:{sample_port}'
 
     ret = requests.post(url, headers=get_authorized_headers(TOKEN2), json={
-        'method': 'SampleService.validate_sample',
+        'method': 'SampleService.validate_samples',
         'version': '1.1',
         'id': '67',
         'params': [{
@@ -4428,4 +4428,4 @@ def _validate_sample_as_admin(sample_port, as_user, get_token, expected_user):
     # print(ret.text)
     assert ret.ok is True
     ret_json = ret.json()['result'][0]
-    assert mysample not in ret_json['errors']
+    assert 'mysample' not in ret_json['errors']

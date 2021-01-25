@@ -203,8 +203,8 @@ def validate_samples_params(params: Dict[str, Any]) -> List[Sample]:
     :raises IllegalParameterError: if any of the arguments are illegal.
     '''
     _check_params(params)
-    if type(params.get('samples')) != dict:
-        raise _IllegalParameterError('params must contain samples key that maps to a structure')
+    if type(params.get('samples')) != list and len(params.get('samples', [])) > 0:
+        raise _IllegalParameterError('params must contain list of `samples`')
     samples = []
     for s in params['samples']:
         if type(s.get('node_tree')) != list:
