@@ -53,9 +53,9 @@ Note that usage of the administration flags will be logged by the service.
     # state. A method could easily clobber the state set by another while
     # the latter method is running.
     ######################################### noqa
-    VERSION = "0.1.0-alpha23"
+    VERSION = "0.1.0-alpha24"
     GIT_URL = "https://github.com/slebras/sample_service.git"
-    GIT_COMMIT_HASH = "3d61bb65ea93dd2737cad107640c2dea9e8d8cef"
+    GIT_COMMIT_HASH = "31ff49004fd1857c2df958efa674a4fe2ad167cd"
 
     #BEGIN_CLASS_HEADER
     #END_CLASS_HEADER
@@ -66,7 +66,6 @@ Note that usage of the administration flags will be logged by the service.
         #BEGIN_CONSTRUCTOR
         self._samples, self._user_lookup = _build_samples(config)
         #END_CONSTRUCTOR
-        pass
 
 
     def create_sample(self, ctx, params):
@@ -395,7 +394,6 @@ Note that usage of the administration flags will be logged by the service.
             'update_sample_acls', ctx.log_info, skip_check=not params.get('as_admin'))
         self._samples.update_sample_acls(id_, _UserID(ctx[_CTX_USER]), acldelta, as_admin=admin)
         #END update_sample_acls
-        pass
 
     def replace_sample_acls(self, ctx, params):
         """
@@ -434,7 +432,6 @@ Note that usage of the administration flags will be logged by the service.
             'replace_sample_acls', ctx.log_info, skip_check=not params.get('as_admin'))
         self._samples.replace_sample_acls(id_, _UserID(ctx[_CTX_USER]), acls, as_admin=admin)
         #END replace_sample_acls
-        pass
 
     def get_metadata_key_static_metadata(self, ctx, params):
         """
@@ -609,7 +606,6 @@ Note that usage of the administration flags will be logged by the service.
             duid,
             as_admin=as_admin)
         #END expire_data_link
-        pass
 
     def get_data_links_from_sample(self, ctx, params):
         """
