@@ -411,12 +411,8 @@ def test_init_fail():
     cfg['kafka-topic'] = 'crap'
     # get_validators is tested elsewhere, just make sure it'll error out
     cfg['metadata-validator-config-url'] = 'https://kbase.us/services'
-    # init_fail(cfg, ValueError(
-    #     'Failed to open validator configuration file at https://kbase.us/services: Not Found'))
     init_fail(cfg, ValueError(
-        'Failed to open validator configuration file at https://kbase.us/services: '
-        '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1056)'
-        ))
+        'Failed to open validator configuration file at https://kbase.us/services: Not Found'))
 
 
 def init_fail(config, expected):
