@@ -43,7 +43,7 @@ jobs:
           # file may be gzipped over transfer
           ls -hl
           head -10 $MONGODB_VER.tgz
-          gzip -d -l $MONGODB_VER.tgz
+          gzip -d $MONGODB_VER.tgz
           ls -hl
           head -10 $MONGODB_VER.tar
           tar xf $MONGODB_VER.tar
