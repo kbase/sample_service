@@ -40,7 +40,8 @@ jobs:
           # mongo is only a test dependency, no point in matrixing it
           cd ..
           wget http://fastdl.mongodb.org/linux/$MONGODB_VER.tgz
-          echo $MONGODB_VER.tgz
+          # file may be gzipped over transfer/ first find it.
+          ls .
           tar xfz $MONGODB_VER.tgz
           export MONGOD=`pwd`/$MONGODB_VER/bin/mongod
           cd -
