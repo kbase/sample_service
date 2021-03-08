@@ -41,7 +41,9 @@ jobs:
           cd ..
           wget http://fastdl.mongodb.org/linux/$MONGODB_VER.tgz
           # file may be gzipped over transfer
+          ls .
           gzip -d $MONGODB_VER.tgz
+          ls .
           tar xfz $MONGODB_VER.tgz
           export MONGOD=`pwd`/$MONGODB_VER/bin/mongod
           cd -
