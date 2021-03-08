@@ -9,11 +9,19 @@ on:
 jobs:
   non_sdk_tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9]
     steps:
 
       - name: Check out GitHub repo
         if: "!contains(github.event.head_commit.message, 'skip ci')"
         uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
 
       - name: Set up test environment
         if: "!contains(github.event.head_commit.message, 'skip ci')"
@@ -26,6 +34,8 @@ jobs:
           KAFKA_VER: 2.5.0
           SCALA_VER: 2.12
         run: |
+          # upgrade and update
+          apt update && apt upgrade
           # Download necessary components for testing
           # mongo is only a test dependency, no point in matrixing it
           cd ..
@@ -80,8 +90,16 @@ jobs:
           sed -i "s#^test.mongo.wired_tiger.*#test.mongo.wired_tiger=true#" test.cfg
           cat test.cfg
           cd -
+
+      - name: Install Python dependencies
+        shell: bash
+        run: |
+          pip install --upgrade pip
+          pip install flake8 pipenv
+
       - name: Run tests
         shell: bash
         run: |
-          make test-sdkless
+          pipenv install --dev
+          pipenv run make test-sdkless
 
