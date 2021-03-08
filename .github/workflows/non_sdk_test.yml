@@ -44,7 +44,7 @@ jobs:
           ls .
           gzip -d $MONGODB_VER.tgz
           ls .
-          tar xfz $MONGODB_VER.tgz
+          tar xfz $MONGODB_VER.tar
           export MONGOD=`pwd`/$MONGODB_VER/bin/mongod
           cd -
 
