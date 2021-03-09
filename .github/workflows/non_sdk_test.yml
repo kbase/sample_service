@@ -51,14 +51,16 @@ jobs:
           tar xf $MONGODB_VER.tar
           export MONGOD=`pwd`/$MONGODB_VER/bin/mongod
           cd -
+          echo "Done with Mongo"
 
           # arango
           cd ..
           curl -O https://download.arangodb.com/arangodb$ARANGODB_V/Community/Linux/arangodb3-linux-$ARANGODB_VER.tar.gz
-          tar -xf arangodb3-linux-$ARANGODB_VER.tar.gz 
+          tar -xf arangodb3-linux-$ARANGODB_VER.tar.gz
           export ARANGO_EXE=$(pwd)/arangodb3-$ARANGODB_VER/usr/sbin/arangod
           export ARANGO_JS=$(pwd)/arangodb3-$ARANGODB_VER/usr/share/arangodb3/js/
           cd -
+          echo "Done with Arango"
 
           # kafka
           cd ..
@@ -66,25 +68,14 @@ jobs:
           tar -xf kafka_$SCALA_VER-$KAFKA_VER.tgz
           export KAFKA_BIN_DIR=$(pwd)/kafka_$SCALA_VER-$KAFKA_VER/bin
           cd -
+          echo "Done with Kafka"
 
           # jars
           cd ..
           git clone https://github.com/kbase/jars
           export JARS=$(pwd)/jars/lib/jars
           cd -
-
-          # python deps
-          pip install pipenv
-          pipenv install --dev
-
-          # kb-sdk
-          docker pull kbase/kb-sdk
-          cd ..
-          docker run kbase/kb-sdk genscript > kb-sdk
-          export KBSDK=$(pwd)/kb-sdk
-          chmod a+x $KBSDK
-          cd -
-          $KBSDK version
+          echo "Done with Jars"
 
           # copy to test.cfg file
           cd test
