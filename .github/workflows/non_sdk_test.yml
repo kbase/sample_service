@@ -47,6 +47,7 @@ jobs:
           gzip -d $MONGODB_VER.tgz
           tar --version
           apt install --upgrade tar
+          tar --version
           ls -hl
           head -10 $MONGODB_VER.tar
           tar xf $MONGODB_VER.tar
