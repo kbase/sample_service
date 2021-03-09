@@ -41,13 +41,7 @@ jobs:
           cd ..
           wget http://fastdl.mongodb.org/linux/$MONGODB_VER.tgz
           # file may be gzipped over transfer
-          df -h
-          ls -hl
-          head -10 $MONGODB_VER.tgz
           gzip -d $MONGODB_VER.tgz
-          tar --version
-          ls -hl
-          head -10 $MONGODB_VER.tar
           tar xf $MONGODB_VER.tar
           export MONGOD=`pwd`/$MONGODB_VER/bin/mongod
           cd -
@@ -65,7 +59,7 @@ jobs:
           # kafka
           cd ..
           curl -O http://mirror.metrocast.net/apache/kafka/$KAFKA_VER/kafka_$SCALA_VER-$KAFKA_VER.tgz
-          tar -xf kafka_$SCALA_VER-$KAFKA_VER.tgz
+          tar -xzf kafka_$SCALA_VER-$KAFKA_VER.tgz
           export KAFKA_BIN_DIR=$(pwd)/kafka_$SCALA_VER-$KAFKA_VER/bin
           cd -
           echo "Done with Kafka"
