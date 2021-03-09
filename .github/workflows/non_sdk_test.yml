@@ -46,8 +46,6 @@ jobs:
           head -10 $MONGODB_VER.tgz
           gzip -d $MONGODB_VER.tgz
           tar --version
-          apt-get install tar
-          tar --version
           ls -hl
           head -10 $MONGODB_VER.tar
           tar xf $MONGODB_VER.tar
