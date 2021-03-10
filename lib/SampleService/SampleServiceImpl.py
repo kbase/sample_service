@@ -2,6 +2,7 @@
 #BEGIN_HEADER
 
 import datetime as _datetime
+from collections import defaultdict
 
 from SampleService.core.config import build_samples as _build_samples
 from SampleService.core.api_translation import (get_sample_address_from_object as
@@ -1021,8 +1022,19 @@ Note that usage of the administration flags will be logged by the service.
         errors = {}
         for sample in samples:
           error_strings = self._samples.validate_sample(sample)
+          collisions = defaultdict(lambda: 0)
           if error_strings:
-            errors[sample.name] = error_strings
+            if sample.name in errors:
+              # option 1: change sample name.
+              sample_name_edit = str(sample.name) + "-" + str(collisions[sample.name])
+              collisions[sample.name] += 1
+              errors[sample_name_edit] = error_strings
+              # option 2: throw an error of collision.
+              # raise ValueError(f"'{sample.name}' provided more than once as a sample name")
+              # option 3: merge the samples errors together.
+              # errors[sample.name] = erorrs[sample.name] + error_strings
+            else:
+              errors[sample.name] = error_strings
         results = {'errors': errors}
         #END validate_samples
 
