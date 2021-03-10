@@ -157,7 +157,7 @@ def create_sample_params(params: Dict[str, Any]) -> Tuple[Sample, Optional[UUID]
         raise _IllegalParameterError('sample node tree must be present and a list')
     if s.get('name') is not None and type(s.get('name')) != str:
         raise _IllegalParameterError('sample name must be omitted or a string')
-    _check_nodes(s)
+    nodes = _check_nodes(s)
     id_ = get_id_from_object(s, ID, name='sample.id')
 
     pv = params.get('prior_version')
@@ -179,7 +179,7 @@ def validate_samples_params(params: Dict[str, Any]) -> List[Sample]:
     :raises IllegalParameterError: if any of the arguments are illegal.
     '''
     _check_params(params)
-    if type(params.get('samples')) != list or len(params.get('samples')) == 0:
+    if type(params.get('samples')) != list or len(params.get('samples', [])) == 0:
         raise _IllegalParameterError('params must contain list of `samples`')
     samples = []
     for s in params['samples']:
@@ -187,7 +187,7 @@ def validate_samples_params(params: Dict[str, Any]) -> List[Sample]:
             raise _IllegalParameterError('sample node tree must be present and a list')
         if type(s.get('name')) != str or len(s.get('name')) <= 0:
             raise _IllegalParameterError('sample name must be included as non-empty string')
-        _check_nodes(s)
+        nodes = _check_nodes(s)
         s = Sample(nodes, s.get('name'))
         samples.append(s)
 
@@ -218,6 +218,7 @@ def _check_nodes(s):
         except _IllegalParameterError as e:
             raise _IllegalParameterError(
                 f'Error for node at index {i}: ' + _cast(str, e.message)) from e
+    return nodes
 
 
 def _check_meta(m, index, name) -> Optional[Dict[str, Dict[str, PrimitiveType]]]:
