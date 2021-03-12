@@ -12,7 +12,6 @@ flake8 = "*"
 pymongo = "*"
 semver = "*"
 ipython = "*"
-install = "*"
 
 [packages]
 python-arango = "==5.0.0"
