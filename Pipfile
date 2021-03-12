@@ -12,6 +12,7 @@ flake8 = "*"
 pymongo = "*"
 semver = "*"
 ipython = "*"
+install = "*"
 
 [packages]
 python-arango = "==5.0.0"
@@ -29,6 +30,7 @@ jinja2 = "==2.11.2"
 gevent = "==20.5.0"
 gunicorn = "==20.0.4"
 kafka-python = "==2.0.1"
+greenlet = "==0.4.16"
 
 [requires]
 python_version = "3.7"
