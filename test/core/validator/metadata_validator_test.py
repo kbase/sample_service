@@ -438,7 +438,7 @@ def test_set_validate_metadata_return_errors():
 def _validate_metadata_errors(vals, meta, expected):
     mv = MetadataValidatorSet(vals)
     # with raises(Exception) as got:
-    errors = mv.validate_metadata(meta, return_error_strings=True)
+    errors = mv.validate_metadata(meta, return_error_detail=True)
     assert len(errors) == 1
     assert str(errors[0]) == str(expected)
 

@@ -1019,22 +1019,10 @@ Note that usage of the administration flags will be logged by the service.
         # return variables are: results
         #BEGIN validate_samples
         samples = _validate_samples_params(params)
-        errors = {}
+        errors = []
         for sample in samples:
-          error_strings = self._samples.validate_sample(sample)
-          collisions = defaultdict(lambda: 0)
-          if error_strings:
-            if sample.name in errors:
-              # option 1: change sample name.
-              sample_name_edit = str(sample.name) + "-" + str(collisions[sample.name])
-              collisions[sample.name] += 1
-              errors[sample_name_edit] = error_strings
-              # option 2: throw an error of collision.
-              # raise ValueError(f"'{sample.name}' provided more than once as a sample name")
-              # option 3: merge the samples errors together.
-              # errors[sample.name] = erorrs[sample.name] + error_strings
-            else:
-              errors[sample.name] = error_strings
+          error_detail = self._samples.validate_sample(sample)
+          errors.extend(error_detail)
         results = {'errors': errors}
         #END validate_samples
 
