@@ -125,11 +125,12 @@ class Samples:
         for i, n in enumerate(sample.nodes):
             try:
                 error_detail = self._metaval.validate_metadata(n.controlled_metadata, return_error_detail)
-                for e in error_detail:
-                    e['node'] = n.name
+                if return_error_detail:
+                    for e in error_detail:
+                        e['node'] = n.name
+                    return error_detail
             except _MetadataValidationError as e:
                 raise _MetadataValidationError(f'Node at index {i}: {e.message}') from e
-        return error_detail
 
     def _check_perms(
             self,

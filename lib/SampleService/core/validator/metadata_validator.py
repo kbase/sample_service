@@ -239,11 +239,11 @@ class MetadataValidatorSet:
                 f'index is {len(self._prefix_vals[prefix]) - 1}')
         return self._prefix_vals[prefix][index](prefix, key, value)
 
-    def build_error_detail(self, message, dev_message=None, node=None, field=None, sample=None):
+    def build_error_detail(self, message, dev_message=None, node=None, key=None, sample=None):
         return {
             'message': message,
             'dev_message': dev_message if dev_message!=None else message,
-            'field': field,
+            'key': key,
             'node': node,
             'sample': sample
         }
@@ -271,8 +271,8 @@ class MetadataValidatorSet:
                 if return_error_detail:
                     errors.append(
                         self.build_error_detail(
-                            f'Cannot validate controlled field "{k}", no matching validator found.',
-                            field=k
+                            f'Cannot validate controlled field "{k}", no matching validator found',
+                            key=k
                         )
                     )
                 else:
@@ -286,7 +286,7 @@ class MetadataValidatorSet:
                             self.build_error_detail(
                                 f'Validation failed: "{ret}"',
                                 dev_message=f'Key {k}: {ret}',
-                                field=k
+                                key=k
                             )
                         )
                     else:
@@ -298,9 +298,9 @@ class MetadataValidatorSet:
                         if return_error_detail:
                             errors.append(
                                 self.build_error_detail(
-                                    f'Validation failed: "{error}" from validator for "{p.key}"',
+                                    f'Validation failed: "{error}" from validator for prefix "{p.key}"',
                                     dev_message=f'Prefix validator {p.key}, key {k}: {error}',
-                                    field=k
+                                    key=k
                                 )
                             )
                         else:

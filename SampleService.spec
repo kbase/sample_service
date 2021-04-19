@@ -512,7 +512,7 @@ module SampleService {
         string dev_message;
         sample_name sample;
         node_id node;
-        metadata_key field;
+        metadata_key key;
     } ValidateSamplesError;
 
     typedef structure {
