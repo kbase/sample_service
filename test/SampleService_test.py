@@ -608,6 +608,123 @@ def test_create_and_get_sample_with_version(sample_port, kafka):
         ])
 
 
+def test_create_and_get_samples(sample_port, kafka):
+    _clear_kafka_messages(kafka)
+    url = f'http://localhost:{sample_port}'
+
+    # first sample
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN1), json={
+        'method': 'SampleService.create_sample',
+        'version': '1.1',
+        'id': '67',
+        'params': [{
+            'sample': {'name': 'mysample',
+                       'node_tree': [{'id': 'root',
+                                      'type': 'BioReplicate',
+                                      'meta_controlled': {'foo': {'bar': 'baz'},
+                                                          'stringlentest': {'foooo': 'barrr',
+                                                                            'spcky': 'fa'},
+                                                          'prefixed': {'safe': 'args'}
+                                                          },
+                                      'meta_user': {'a': {'b': 'c'}},
+                                      'source_meta': [
+                                          {'key': 'foo', 'skey': 'bar', 'svalue': {'whee': 'whoo'}},
+                                          {'key': 'stringlentest',
+                                           'skey': 'ya fer sure',
+                                           'svalue': {'just': 'some', 'data': 42}}
+                                          ]
+                                      }
+                                     ]
+                       }
+        }]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    assert ret.json()['result'][0]['version'] == 1
+    id1_ = ret.json()['result'][0]['id']
+
+    # second sample
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN1), json={
+        'method': 'SampleService.create_sample',
+        'version': '1.1',
+        'id': '68',
+        'params': [{
+            'sample': {'name': 'mysample2',
+                       'node_tree': [{'id': 'root2',
+                                      'type': 'BioReplicate',
+                                      'meta_controlled': {'foo': {'bar': 'bat'}},
+                                      'meta_user': {'a': {'b': 'd'}}
+                                      }
+                                     ]
+                       }
+        }]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    assert ret.json()['result'][0]['version'] == 1
+    id2_ = ret.json()['result'][0]['id']
+
+    # get both samples
+    ret = requests.post(url, headers=get_authorized_headers(TOKEN1), json={
+        'method': 'SampleService.get_samples',
+        'version': '1.1',
+        'id': '42',
+        'params': [{'samples': [{'id': id1_, 'version': 1}, {'id': id2_, 'version': 1}]}]
+    })
+    # print(ret.text)
+    assert ret.ok is True
+    j = ret.json()['result'][0]
+    for s in j:
+        assert_ms_epoch_close_to_now(s['save_date'])
+        del s['save_date']
+    print('-'*80)
+    import json
+    print(json.dumps(j))
+    print('-'*80)
+
+    assert j == [{
+        'id': id1_,
+        'version': 1,
+        'user': USER1,
+        'name': 'mysample',
+        'node_tree': [{
+           'id': 'root',
+           'parent': None,
+           'type': 'BioReplicate',
+           'meta_controlled': {'foo': {'bar': 'baz'},
+                               'stringlentest': {'foooo': 'barrr',
+                                                 'spcky': 'fa'},
+                               'prefixed': {'safe': 'args'}
+                               },
+           'meta_user': {'a': {'b': 'c'}},
+           'source_meta': [
+                {'key': 'foo', 'skey': 'bar', 'svalue': {'whee': 'whoo'}},
+                {'key': 'stringlentest',
+                 'skey': 'ya fer sure',
+                 'svalue': {'just': 'some', 'data': 42}}
+                 ],
+        }]
+    }, {
+        'id': id2_,
+        'version': 1,
+        'user': USER1,
+        'name': 'mysample2',
+        'node_tree': [{'id': 'root2',
+            'parent': None,
+            'type': 'BioReplicate',
+            'meta_controlled': {'foo': {'bar': 'bat'}},
+            'meta_user': {'a': {'b': 'd'}},
+            'source_meta': []
+        }]
+    }]
+    _check_kafka_messages(
+        kafka,
+        [
+            {'event_type': 'NEW_SAMPLE', 'sample_id': id1_, 'sample_ver': 1},
+            {'event_type': 'NEW_SAMPLE', 'sample_id': id2_, 'sample_ver': 1}
+        ])
+
+
 def test_create_sample_as_admin(sample_port):
     _create_sample_as_admin(sample_port, None, TOKEN2, USER2)
 
@@ -4057,6 +4174,13 @@ def test_user_lookup(sample_port, auth):
     assert ul.invalid_users([]) == []
     assert ul.invalid_users([UserID(USER1), UserID(USER2), UserID(USER3)]) == []
 
+def test_user_lookup_cache(sample_port, auth):
+    ul = KBaseUserLookup(f'http://localhost:{auth.port}/testmode', TOKEN1)
+    assert ul._valid_cache.get(USER1, default=False) is False
+    assert ul._valid_cache.get(USER2, default=False) is False
+    ul.invalid_users([UserID(USER1)])
+    assert ul._valid_cache.get(USER1, default=False) is True
+    assert ul._valid_cache.get(USER2, default=False) is False
 
 def test_user_lookup_bad_users(sample_port, auth):
     ul = KBaseUserLookup(f'http://localhost:{auth.port}/testmode/', TOKEN1)
@@ -4112,6 +4236,13 @@ def _check_is_admin(port, results, full_roles=None, read_roles=None):
     for t, u, r in zip([TOKEN1, TOKEN2, TOKEN3, TOKEN4], [USER1, USER2, USER3, USER4], results):
         assert ul.is_admin(t) == (r, u)
 
+def test_is_admin_cache(sample_port, auth):
+    ul = KBaseUserLookup(f'http://localhost:{auth.port}/testmode/', TOKEN_SERVICE)
+    assert ul._admin_cache.get(TOKEN1, default=False) is False
+    assert ul._admin_cache.get(TOKEN2, default=False) is False
+    ul.is_admin(TOKEN1)
+    assert ul._admin_cache.get(TOKEN1, default=False) is not False
+    assert ul._admin_cache.get(TOKEN2, default=False) is False
 
 def test_is_admin_fail_bad_input(sample_port, auth):
     ul = KBaseUserLookup(f'http://localhost:{auth.port}/testmode/', TOKEN_SERVICE)
