@@ -54,9 +54,9 @@ Note that usage of the administration flags will be logged by the service.
     # state. A method could easily clobber the state set by another while
     # the latter method is running.
     ######################################### noqa
-    VERSION = "0.1.0-alpha24"
-    GIT_URL = "https://github.com/slebras/sample_service.git"
-    GIT_COMMIT_HASH = "31ff49004fd1857c2df958efa674a4fe2ad167cd"
+    VERSION = "0.1.0-alpha25"
+    GIT_URL = "git@github.com:kbase/sample_service.git"
+    GIT_COMMIT_HASH = "df52d4472971a7225e0e92aece37ce6ec4fb2877"
 
     #BEGIN_CLASS_HEADER
     #END_CLASS_HEADER
@@ -67,6 +67,7 @@ Note that usage of the administration flags will be logged by the service.
         #BEGIN_CONSTRUCTOR
         self._samples, self._user_lookup = _build_samples(config)
         #END_CONSTRUCTOR
+        pass
 
 
     def create_sample(self, ctx, params):
@@ -395,6 +396,7 @@ Note that usage of the administration flags will be logged by the service.
             'update_sample_acls', ctx.log_info, skip_check=not params.get('as_admin'))
         self._samples.update_sample_acls(id_, _UserID(ctx[_CTX_USER]), acldelta, as_admin=admin)
         #END update_sample_acls
+        pass
 
     def replace_sample_acls(self, ctx, params):
         """
@@ -433,6 +435,7 @@ Note that usage of the administration flags will be logged by the service.
             'replace_sample_acls', ctx.log_info, skip_check=not params.get('as_admin'))
         self._samples.replace_sample_acls(id_, _UserID(ctx[_CTX_USER]), acls, as_admin=admin)
         #END replace_sample_acls
+        pass
 
     def get_metadata_key_static_metadata(self, ctx, params):
         """
@@ -607,6 +610,7 @@ Note that usage of the administration flags will be logged by the service.
             duid,
             as_admin=as_admin)
         #END expire_data_link
+        pass
 
     def get_data_links_from_sample(self, ctx, params):
         """
@@ -1012,8 +1016,14 @@ Note that usage of the administration flags will be logged by the service.
            timestamp in epoch milliseconds.), parameter "version" of type
            "version" (The version of a sample. Always > 0.)
         :returns: instance of type "ValidateSamplesResults" -> structure:
-           parameter "errors" of mapping from type "sample_name" (A sample
-           name. Must be less than 255 characters.) to list of String
+           parameter "errors" of list of type "ValidateSamplesError" ->
+           structure: parameter "message" of String, parameter "dev_message"
+           of String, parameter "sample_name" of type "sample_name" (A sample
+           name. Must be less than 255 characters.), parameter "node" of type
+           "node_id" (A SampleNode ID. Must be unique within a Sample and be
+           less than 255 characters.), parameter "key" of type "metadata_key"
+           (A key in a metadata key/value pair. Less than 1000 unicode
+           characters.)
         """
         # ctx is the context object
         # return variables are: results

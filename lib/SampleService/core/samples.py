@@ -519,5 +519,5 @@ class Samples:
         _not_falsy(sample, 'sample')
         error_detail = self._validate_metadata(sample, return_error_detail=True)
         for e in error_detail:
-            e['sample'] = sample.name
+            e['sample_name'] = sample.name
         return error_detail

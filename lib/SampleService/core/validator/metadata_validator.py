@@ -245,7 +245,7 @@ class MetadataValidatorSet:
             'dev_message': dev_message if dev_message!=None else message,
             'key': key,
             'node': node,
-            'sample': sample
+            'sample_name': sample
         }
 
     def validate_metadata(

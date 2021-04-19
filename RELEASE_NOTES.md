@@ -1,7 +1,7 @@
 # SampleService release notes
 =========================================
 
-0.1.0-alpha24
+0.1.0-alpha25
 -----
 * Adding validate_samples method. Adds endpoint for checking if a list of samples will pass the validation step.
 
