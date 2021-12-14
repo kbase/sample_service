@@ -1,12 +1,12 @@
 import datetime
 
-from pytest import raises
-
 from SampleService.core.arg_checkers import check_string, not_falsy, not_falsy_in_iterable
 from SampleService.core.arg_checkers import check_timestamp
 from SampleService.core.errors import MissingParameterError, IllegalParameterError
-from common import dt
-from core.test_utils import assert_exception_correct
+from pytest import raises
+
+from testing.shared.common import dt
+from testing.shared.test_utils import assert_exception_correct
 
 LONG_STRING = 'a' * 100
 

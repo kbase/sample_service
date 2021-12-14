@@ -1,8 +1,8 @@
-from pytest import raises
-
 from SampleService.core.errors import MissingParameterError, IllegalParameterError
 from SampleService.core.user import UserID
-from core.test_utils import assert_exception_correct
+from pytest import raises
+
+from testing.shared.test_utils import assert_exception_correct
 
 
 #

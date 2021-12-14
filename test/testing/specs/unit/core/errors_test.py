@@ -2,10 +2,10 @@
 # thrown in
 # Just testing the main error class
 
+from SampleService.core.errors import SampleError, ErrorType
 from pytest import raises
 
-from SampleService.core.errors import SampleError, ErrorType
-from core.test_utils import assert_exception_correct
+from testing.shared.test_utils import assert_exception_correct
 
 
 def test_error_root_no_message():

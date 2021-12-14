@@ -44,7 +44,7 @@ services:
       # github and specs
       # TODO: Replace with env variable so we can use the normal source, or
       #       a local testing config.
-      - metadata_validator_config_url=file:///kb/module/test/integration/data/metadata_validation.yml
+      - metadata_validator_config_url=file:///kb/module/test/data/metadata_validation.yml
       # - specs_github_repo
       # - specs_github_branch
       # - github_token

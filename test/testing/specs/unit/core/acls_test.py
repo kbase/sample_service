@@ -1,12 +1,12 @@
 import datetime
 
-from common import dt
-from pytest import raises
-
 from SampleService.core.acls import SampleACL, SampleACLOwnerless, SampleACLDelta
 from SampleService.core.errors import IllegalParameterError, UnauthorizedError
-from core.test_utils import assert_exception_correct
-from unit_common import u
+from pytest import raises
+
+from testing.shared.common import dt
+from testing.shared.test_utils import assert_exception_correct
+from testing.specs.unit.unit_common import u
 
 
 #

@@ -1,8 +1,6 @@
 import datetime
 import uuid
 
-from pytest import raises
-
 from SampleService.core.errors import IllegalParameterError, MissingParameterError
 from SampleService.core.sample import (
     Sample,
@@ -14,8 +12,10 @@ from SampleService.core.sample import (
 )
 from SampleService.core.sample import SampleNodeAddress
 from SampleService.core.user import UserID
-from common import dt
-from core.test_utils import assert_exception_correct
+from pytest import raises
+
+from testing.shared.common import dt
+from testing.shared.test_utils import assert_exception_correct
 
 
 #

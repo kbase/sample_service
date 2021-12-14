@@ -1,16 +1,21 @@
-from _pytest.python_api import raises
+from pytest import raises
 
 from SampleService.SampleServiceImpl import SampleService
-from SampleService.core.errors import MissingParameterError
-from core.test_utils import assert_exception_correct
+from SampleService.core.errors import (
+    MissingParameterError)
+from core.test_utils import (
+    assert_exception_correct,
+)
+
+
+def init_fail(config, expected):
+    with raises(Exception) as got:
+        SampleService(config)
+    assert_exception_correct(got.value, expected)
 
 
 def test_init_fail():
-    def init_fail(config, expected):
-        with raises(Exception) as got:
-            SampleService(config)
-        assert_exception_correct(got.value, expected)
-
+    # init success is tested via starting the server
     init_fail(None, ValueError('config is empty, cannot start service'))
     cfg = {}
     init_fail(cfg, ValueError('config is empty, cannot start service'))

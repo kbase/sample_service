@@ -18,14 +18,17 @@ INTEGRATION_TEST_SPEC ?= $(TEST_DIR)/integration
 SYSTEM_TEST_SPEC ?= $(TEST_DIR)/system
 
 PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)
-INTEGRATION_PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)/integration:$(MAKEFILE_DIR)/$(TEST_DIR)/shared
-SYSTEM_PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)/system:$(MAKEFILE_DIR)/$(TEST_DIR)/shared
-UNIT_PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)/unit:$(MAKEFILE_DIR)/$(TEST_DIR)/shared
+INTEGRATION_PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)/specs/integration:$(MAKEFILE_DIR)/$(TEST_DIR)/shared
+SYSTEM_PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)/specs/system:$(MAKEFILE_DIR)/$(TEST_DIR)/shared
+UNIT_PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)/specs/unit:$(MAKEFILE_DIR)/$(TEST_DIR)/shared
+
+TEST_PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)/specs/unit:$(MAKEFILE_DIR)/$(TEST_DIR)
+
 
 TSTFL=$(MAKEFILE_DIR)/$(TEST_DIR)/$(TEST_CONFIG_FILE)
-INTEGRATION_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/integration/$(TEST_CONFIG_FILE)
-SYSTEM_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/system/$(TEST_CONFIG_FILE)
-UNIT_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/unit/$(TEST_CONFIG_FILE)
+INTEGRATION_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/specs/integration/$(TEST_CONFIG_FILE)
+SYSTEM_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/specs/system/$(TEST_CONFIG_FILE)
+UNIT_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/specs/unit/$(TEST_CONFIG_FILE)
 
 .PHONY: test
 
@@ -75,7 +78,7 @@ test-integration:
 		pytest --verbose \
 		    --cov $(LIB_DIR)/$(SERVICE_CAPS) \
 			--cov-append \
-			--cov-config=$(TEST_DIR)/integration/coveragerc \
+			--cov-config=$(TEST_DIR)/coveragerc \
 			$(INTEGRATION_TEST_SPEC)
 
 test-system:
@@ -86,11 +89,11 @@ test-system:
 
 test-unit:
 	@echo "Running unit tests (pytest) in $(UNIT_TEST_SPEC)"
-	PYTHONPATH=$(UNIT_PYPATH) SAMPLESERV_TEST_FILE=$(UNIT_TEST_CONFIG) \
+	PYTHONPATH=$(TEST_PYPATH) SAMPLESERV_TEST_FILE=$(UNIT_TEST_CONFIG) \
 		pytest --verbose \
 			--cov $(LIB_DIR)/$(SERVICE_CAPS) \
 			--cov-append \
-			--cov-config=$(TEST_DIR)/unit/coveragerc \
+			--cov-config=$(TEST_DIR)/coveragerc \
 			$(UNIT_TEST_SPEC)
 
 

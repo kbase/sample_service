@@ -1,27 +1,16 @@
-# These tests cover the integration of the entire system and do not go into details - that's
-# what unit tests are for. As such, typically each method will get a single happy path test and
-# a single unhappy path test unless otherwise warranted.
-
-# Tests of the auth user lookup and workspace wrapper code are at the bottom of the file.
-
-from pytest import raises
+from _pytest.python_api import raises
 
 from SampleService.SampleServiceImpl import SampleService
-from SampleService.core.errors import (
-    MissingParameterError)
-from core.test_utils import (
-    assert_exception_correct,
-)
-
-
-def init_fail(config, expected):
-    with raises(Exception) as got:
-        SampleService(config)
-    assert_exception_correct(got.value, expected)
+from SampleService.core.errors import MissingParameterError
+from testing.shared.test_utils import assert_exception_correct
 
 
 def test_init_fail():
-    # init success is tested via starting the server
+    def init_fail(config, expected):
+        with raises(Exception) as got:
+            SampleService(config)
+        assert_exception_correct(got.value, expected)
+
     init_fail(None, ValueError('config is empty, cannot start service'))
     cfg = {}
     init_fail(cfg, ValueError('config is empty, cannot start service'))

@@ -1,6 +1,5 @@
 root=$(git rev-parse --show-toplevel)
 
-# export MOCK_DATASET_PATH=`pwd`/data/test/SampleService
 if [ -z "$MOCK_DATASET_PATH" ]; then
 	echo "The 'MOCK_DATASET_PATH' environment variable is required"
 	exit 1

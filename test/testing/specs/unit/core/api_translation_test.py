@@ -2,8 +2,6 @@ import json
 from unittest.mock import create_autospec
 from uuid import UUID
 
-from pytest import raises
-
 from SampleService.core.acls import AdminPermission
 from SampleService.core.acls import SampleACL, SampleACLOwnerless, SampleACLDelta
 from SampleService.core.api_translation import acls_to_dict, acls_from_dict
@@ -41,8 +39,10 @@ from SampleService.core.sample import (
 from SampleService.core.user import UserID
 from SampleService.core.user_lookup import KBaseUserLookup
 from SampleService.core.workspace import DataUnitID, UPA
-from common import dt
-from core.test_utils import assert_exception_correct
+from pytest import raises
+
+from testing.shared.common import dt
+from testing.shared.test_utils import assert_exception_correct
 
 
 #

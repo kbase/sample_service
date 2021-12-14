@@ -3,9 +3,6 @@ import uuid
 from unittest.mock import (create_autospec, call)
 from uuid import UUID
 
-from common import nw, dt, now_fun
-from pytest import raises
-
 from SampleService.core import user_lookup
 from SampleService.core.acls import SampleACL, SampleACLOwnerless, SampleACLDelta
 from SampleService.core.data_link import DataLink
@@ -26,8 +23,11 @@ from SampleService.core.user import UserID
 from SampleService.core.user_lookup import KBaseUserLookup
 from SampleService.core.validator.metadata_validator import MetadataValidatorSet
 from SampleService.core.workspace import WS, UPA, DataUnitID, WorkspaceAccessType
-from core.test_utils import assert_exception_correct
-from unit_common import u
+from pytest import raises
+
+from testing.shared.common import nw, dt, now_fun
+from testing.shared.test_utils import assert_exception_correct
+from testing.specs.unit.unit_common import u
 
 
 #

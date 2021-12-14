@@ -77,7 +77,7 @@ also, should explore proxying the whole thing to CI arango and services.
 try:
 
 ```shell
-export MOCK_DATASET_PATH=`pwd`/data/test/SampleService
+export MOCK_DATASET_PATH=`pwd`/test/data/mock_services/SampleService
 docker compose up
 docker compose rm -sfv
 ```
@@ -85,6 +85,7 @@ docker compose rm -sfv
 or actually
 
 ```shell
+export MOCK_DATASET_PATH=`pwd`/test/data/mock_services
 make start-test-server
 make remove-test-server
 ```

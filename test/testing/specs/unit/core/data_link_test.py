@@ -1,14 +1,14 @@
 import datetime
 import uuid
 
-from pytest import raises
-
 from SampleService.core.data_link import DataLink
 from SampleService.core.sample import SampleNodeAddress, SampleAddress
 from SampleService.core.user import UserID
 from SampleService.core.workspace import DataUnitID, UPA
-from common import dt
-from core.test_utils import assert_exception_correct
+from pytest import raises
+
+from testing.shared.common import dt
+from testing.shared.test_utils import assert_exception_correct
 
 
 def test_init_no_expire():

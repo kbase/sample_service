@@ -25,7 +25,7 @@ validators:
 prefix_validators:
   bar:
     validators:
-      - module: core.config_test_vals
+      - module: testing.validators.prefix_validators
         callable_builder: prefix_validator_string_builder
         parameters:
           max-len: 10

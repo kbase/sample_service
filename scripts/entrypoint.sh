@@ -24,7 +24,7 @@ export PYTHONPATH=$script_dir/../lib:$PATH:$PYTHONPATH
 #  export PYTHONPATH=$EXTRA_PYTHONPATH:$PYTHONPATH
 #fi
 
-echo "[ENTRYPONIT] Python path: ${PYTHONPATH}"
+echo "[ENTRYPOINT] Python path: ${PYTHONPATH}"
 
 if [ "${1}" = "bash" ] ; then
   export PYTHONPATH="$script_dir/../test:$PYTHONPATH"
@@ -45,7 +45,9 @@ else
     workers=1
     log_level=debugr
   elif [ "${1}" = "test" ] ; then
-    export PYTHONPATH="$script_dir/../test/integration:$PYTHONPATH"
+    # Python path must include the test directory in order for the test validators
+    # to be loadable.
+    export PYTHONPATH="$script_dir/../test:$PYTHONPATH"
     echo "[ENTRYPOINT] test mode with Python path: ${PYTHONPATH}"
     python "${script_dir}/../lib/cli/prepare-arango.py"
     workers=1
