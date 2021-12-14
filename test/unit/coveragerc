@@ -1,0 +1,8 @@
+[run]
+include = lib/SampleService/*
+omit =
+    */__init__.py
+    */SampleServiceServer.py
+    */SampleServiceClient.py
+    */baseclient.py
+    */authclient.py

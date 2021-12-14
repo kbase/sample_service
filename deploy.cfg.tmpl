@@ -80,3 +80,9 @@ metadata-validator-config-url = {{ default .Env.metadata_validator_config_url "h
 # kafka-bootstrap-servers is provided. Legal characters are alphanumerics and the hyphen.
 kafka-bootstrap-servers = {{ default .Env.kafka_bootstrap_servers "" }}
 kafka-topic = {{ default .Env.kafka_topic "" }}
+
+#
+# Database consistency checker
+#
+consistency-checker-enabled = {{ default .Env.consistency_checker_enabled "false" }}
+consistency-checker-interval = {{ default .Env.consistency_checker_interval 60 }}
