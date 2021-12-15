@@ -1,5 +1,5 @@
 ---
-name: Build and Push Up main, feature-, fix- branches, PRs, releases
+name: Run all tests manually
 on:
   workflow_dispatch:
 jobs:
