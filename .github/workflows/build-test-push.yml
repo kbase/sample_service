@@ -64,7 +64,7 @@ jobs:
         with:
           type: lcov
           result_path: cov_profile.lcov
-          min_coverage: 10
+          min_coverage: 70
           token: ${{ github.token }}
 
       #
