@@ -1,11 +1,7 @@
 from pytest import raises
-
+from SampleService.core.errors import MissingParameterError
 from SampleService.SampleServiceImpl import SampleService
-from SampleService.core.errors import (
-    MissingParameterError)
-from core.test_utils import (
-    assert_exception_correct,
-)
+from testing.shared.test_utils import assert_exception_correct
 
 
 def init_fail(config, expected):

@@ -1,19 +1,34 @@
 import os
 import shutil
 
-import test_utils
 from arango import ArangoClient
-from common import TEST_DB_NAME, TEST_USER, TEST_PWD, TEST_COL_SCHEMA, TEST_COL_WS_OBJ_VER, \
-    TEST_COL_DATA_LINK, TEST_COL_NODE_EDGE, TEST_COL_NODES, TEST_COL_VER_EDGE, TEST_COL_VERSION, TEST_COL_SAMPLE, \
-    create_deploy_cfg
 from pytest import fixture
-from test_constants import SAMPLE_SERVICE_URL, MOCK_SERVICES_URL, ARANGODB_URL, KAFKA_HOST
-
 from SampleService.core.storage.arango_sample_storage import ArangoSampleStorage
+from testing.shared import test_utils
+from testing.shared.common import (
+    TEST_COL_DATA_LINK,
+    TEST_COL_NODE_EDGE,
+    TEST_COL_NODES,
+    TEST_COL_SAMPLE,
+    TEST_COL_SCHEMA,
+    TEST_COL_VER_EDGE,
+    TEST_COL_VERSION,
+    TEST_COL_WS_OBJ_VER,
+    TEST_DB_NAME,
+    TEST_PWD,
+    TEST_USER,
+    create_deploy_cfg,
+)
+from testing.shared.test_constants import (
+    ARANGODB_URL,
+    KAFKA_HOST,
+    MOCK_SERVICES_URL,
+    SAMPLE_SERVICE_URL,
+)
 
 
 def delete_test_db(arango_client):
-    system_db = arango_client.db('_system')  # default access to _system db
+    system_db = arango_client.db("_system")  # default access to _system db
     system_db.delete_database(TEST_DB_NAME)
 
 
@@ -21,8 +36,10 @@ DB_USED = False
 
 
 def create_test_db(arango_client):
-    system_db = arango_client.db('_system')  # default access to _system db
-    system_db.create_database(TEST_DB_NAME, [{'username': TEST_USER, 'password': TEST_PWD}])
+    system_db = arango_client.db("_system")  # default access to _system db
+    system_db.create_database(
+        TEST_DB_NAME, [{"username": TEST_USER, "password": TEST_PWD}]
+    )
     return arango_client.db(TEST_DB_NAME, TEST_USER, TEST_PWD)
 
 
@@ -62,7 +79,7 @@ def remove_all_files(directory):
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
         except Exception as e:
-            print('Failed to delete %s. Reason: %s' % (file_path, e))
+            print("Failed to delete %s. Reason: %s" % (file_path, e))
 
 
 def samplestorage_method(arango):
@@ -75,7 +92,8 @@ def samplestorage_method(arango):
         TEST_COL_NODE_EDGE,
         TEST_COL_WS_OBJ_VER,
         TEST_COL_DATA_LINK,
-        TEST_COL_SCHEMA)
+        TEST_COL_SCHEMA,
+    )
 
 
 #
@@ -93,7 +111,8 @@ def samplestorage_method(arango):
 # Module scope
 #
 
-@fixture(scope='module')
+
+@fixture(scope="module")
 def temp_dir():
     tempdir = test_utils.get_temp_dir()
     yield tempdir
@@ -102,42 +121,43 @@ def temp_dir():
         remove_all_files(test_utils.get_temp_dir())
 
 
-@fixture(scope='module')
+@fixture(scope="module")
 def kafka_host():
-    yield f'{KAFKA_HOST}'
+    yield f"{KAFKA_HOST}"
 
 
-@fixture(scope='module')
+@fixture(scope="module")
 def arango():
     client = ArangoClient(hosts=f"{ARANGODB_URL}")
     yield client
 
 
-@fixture(scope='module')
+@fixture(scope="module")
 def workspace_url():
-    yield f'{MOCK_SERVICES_URL}/services/ws'
+    yield f"{MOCK_SERVICES_URL}/services/ws"
 
 
 @fixture(scope="module")
 def auth_url():
-    yield f'{MOCK_SERVICES_URL}/services/auth'
+    yield f"{MOCK_SERVICES_URL}/services/auth"
 
 
 #
 # Function scope
 #
 
+
 def reset_db(arango):
     db = clear_db_and_recreate(arango)
     config_path = create_deploy_cfg()
-    os.environ['KB_DEPLOYMENT_CONFIG'] = config_path
+    os.environ["KB_DEPLOYMENT_CONFIG"] = config_path
     return db
 
 
 @fixture(scope="function")
 def sample_service(arango):
     db = reset_db(arango)
-    yield {'url': SAMPLE_SERVICE_URL, 'db': db}
+    yield {"url": SAMPLE_SERVICE_URL, "db": db}
 
 
 @fixture(scope="function")

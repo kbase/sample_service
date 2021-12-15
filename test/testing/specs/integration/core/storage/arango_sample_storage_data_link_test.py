@@ -1,22 +1,24 @@
 import datetime
 import uuid
 
-from common import TEST_COL_DATA_LINK, TEST_COL_WS_OBJ_VER, dt, make_uuid
 from pytest import raises
-from test_utils import assert_exception_correct
-
 from SampleService.core.data_link import DataLink
-from SampleService.core.errors import NoSuchSampleError, NoSuchSampleVersionError, \
-    DataLinkExistsError, NoSuchSampleNodeError, TooManyDataLinksError, \
-    NoSuchLinkError
-from SampleService.core.sample import (
-    SavedSample,
-    SampleNode, SubSampleType, SampleAddress, SampleNodeAddress,
-)
-from SampleService.core.storage.arango_sample_storage import ArangoSampleStorage
+from SampleService.core.errors import (DataLinkExistsError, NoSuchLinkError,
+                                       NoSuchSampleError,
+                                       NoSuchSampleNodeError,
+                                       NoSuchSampleVersionError,
+                                       TooManyDataLinksError)
+from SampleService.core.sample import (SampleAddress, SampleNode,
+                                       SampleNodeAddress, SavedSample,
+                                       SubSampleType)
+from SampleService.core.storage.arango_sample_storage import \
+    ArangoSampleStorage
 from SampleService.core.storage.errors import SampleStorageError
 from SampleService.core.user import UserID
-from SampleService.core.workspace import DataUnitID, UPA
+from SampleService.core.workspace import UPA, DataUnitID
+from testing.shared.common import (TEST_COL_DATA_LINK, TEST_COL_WS_OBJ_VER, dt,
+                                   make_uuid)
+from testing.shared.test_utils import assert_exception_correct
 
 TEST_NODE = SampleNode('foo')
 

@@ -4,10 +4,10 @@
 
 from kafka.errors import NoBrokersAvailable
 from pytest import raises
-
-from SampleService.core.errors import MissingParameterError, IllegalParameterError
+from SampleService.core.errors import (IllegalParameterError,
+                                       MissingParameterError)
 from SampleService.core.notification import KafkaNotifier
-from core.test_utils import assert_exception_correct, find_free_port
+from testing.shared.test_utils import assert_exception_correct, find_free_port
 
 
 def test_kafka_notifier_init_fail():

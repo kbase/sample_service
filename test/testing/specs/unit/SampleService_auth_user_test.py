@@ -4,11 +4,10 @@
 
 
 from pytest import raises
-
 from SampleService.core.user_lookup import KBaseUserLookup
-from core.test_utils import assert_exception_correct
 # Utilities
-from test_constants import TOKEN1
+from testing.shared.test_constants import TOKEN1
+from testing.shared.test_utils import assert_exception_correct
 
 
 def _user_lookup_build_fail(url, token, expected):

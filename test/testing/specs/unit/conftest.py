@@ -2,8 +2,7 @@ import os
 import shutil
 
 from pytest import fixture
-
-from core import test_utils
+from testing.shared import test_utils
 
 
 def remove_all_files(directory):
@@ -15,10 +14,10 @@ def remove_all_files(directory):
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
         except Exception as e:
-            print('Failed to delete %s. Reason: %s' % (file_path, e))
+            print("Failed to delete %s. Reason: %s" % (file_path, e))
 
 
-@fixture(scope='module')
+@fixture(scope="module")
 def temp_dir():
     tempdir = test_utils.get_temp_dir()
     yield tempdir

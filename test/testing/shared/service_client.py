@@ -1,8 +1,7 @@
 import uuid
 
 import requests
-
-from test_constants import SAMPLE_SERVICE_URL
+from testing.shared.test_constants import SAMPLE_SERVICE_URL
 
 DEFAULT_URL = SAMPLE_SERVICE_URL
 
@@ -46,26 +45,28 @@ class ServiceClient:
     def make_rpc(self, function_name, params):
         """Create an RPC JSON data structure"""
         return {
-            'method': f'{self.module_name}.{function_name}',
-            'version': '1.1',
-            'id': str(uuid.uuid4()),
-            'params': [params]
+            "method": f"{self.module_name}.{function_name}",
+            "version": "1.1",
+            "id": str(uuid.uuid4()),
+            "params": [params],
         }
 
     def make_headers(self, token):
         """Convenience method to create the request headers"""
-        headers = {'accept': 'application/json'}
+        headers = {"accept": "application/json"}
         if self.token is not None:
-            headers['authorization'] = token
+            headers["authorization"] = token
         return headers
 
     def call(self, function_name, params, token=None, debug=False):
         """Calls a method in the service"""
-        response = requests.post(self.url,
-                                 headers=self.make_headers(token or self.token),
-                                 json=self.make_rpc(function_name, params))
+        response = requests.post(
+            self.url,
+            headers=self.make_headers(token or self.token),
+            json=self.make_rpc(function_name, params),
+        )
         if debug:
-            print('[Service.call]', params, response.text)
+            print("[Service.call]", params, response.text)
 
         return response
 
@@ -78,8 +79,8 @@ class ServiceClient:
         assert response.ok is True
 
         payload = response.json()
-        assert 'result' in payload
-        result = payload['result']
+        assert "result" in payload
+        result = payload["result"]
 
         # The result may be either null or an array of one element
         # containing the result data.
@@ -107,6 +108,7 @@ class ServiceClient:
         assert response.status_code == 500
 
         payload = response.json()
-        assert 'error' in payload
-        # TODO: should we check other standard bits of a JSON-RPC 1.1 and KBase service error result?
-        return payload['error']
+        assert "error" in payload
+        # TODO: should we check other standard bits of a JSON-RPC 1.1 and
+        # KBase service error result?
+        return payload["error"]

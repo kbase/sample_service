@@ -1,0 +1,51 @@
+version: "3.8"
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - sampleservice
+    networks:
+      - kbase-dev
+    volumes:
+      - "${PWD}:/kb/module"
+    environment:
+      # TODO: most if not all of these can be removed; the test config should have these values too.
+      #
+      - sample_service_url=http://sampleservice:5000
+      # arango
+      - arango_url=http://arangodb:8529
+      # NOTE: must be matched with db created in prepare-arango.py
+      - arango_db=test_db
+      - arango_user=test
+      - arango_pwd=test123
+      # auth
+      - auth_root_url=http://mockservices:3333/services/auth
+      - auth_service_url=http://mockservices:3333/services/auth/api/legacy/KBase/Sessions/Login
+      - auth_token=SERVICETOKENXXXXXXXXXXXXXXXXXXXX
+      # kafka
+      - kafka_bootstrap_servers=kafka:9092
+      - kafka_topic=sampleservice
+      - kbase_endpoint=foo
+      # workspace
+      - workspace_read_admin_token=workspace_read_admin_token
+      - workspace_url=http://mockservices:3333/services/ws
+      # github and specs
+      # TODO: Replace with env variable so we can use the normal source, or
+      #       a local testing config.
+      - metadata_validator_config_url=file:///kb/module/test/data/metadata_validation.yml
+      # - specs_github_repo
+      # - specs_github_branch
+      # - github_token
+      #
+      # Test configuration
+      #
+      - auth_read_admin_roles=readadmin1,readadmin2
+      - auth_full_admin_roles=fulladmin1,fulladmin2
+      #
+      # db consistency checker
+      #
+      - consistency_checker_enabled=false
+      - consistency_checker_interval=60
+    command: [ 'test-override' ]

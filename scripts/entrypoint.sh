@@ -34,6 +34,28 @@ elif [ "${1}" = "wait" ] ; then
   export PYTHONPATH="$script_dir/../test:$PYTHONPATH"
   echo "[ENTRYPOINT] wait mode with Python path: ${PYTHONPATH}"
   while sleep 3600; do :; done
+elif [ "${1}" = "test-unit" ] ; then
+  # Python path must include the test directory in order for the test validators
+  # to be loadable.
+  export PYTHONPATH="$script_dir/../test:$PYTHONPATH"
+  echo "[ENTRYPOINT] unit-test mode with Python path: ${PYTHONPATH}"
+  make test-unit
+elif [ "${1}" = "test-integration" ] ; then
+  # Python path must include the test directory in order for the test validators
+  # to be loadable.
+  export PYTHONPATH="$script_dir/../test:$PYTHONPATH"
+  echo "[ENTRYPOINT] unit-test mode with Python path: ${PYTHONPATH}"
+  make test-integration
+elif [ "${1}" = "test-system" ] ; then
+  # Python path must include the test directory in order for the test validators
+  # to be loadable.
+  export PYTHONPATH="$script_dir/../test:$PYTHONPATH"
+  echo "[ENTRYPOINT] unit-test mode with Python path: ${PYTHONPATH}"
+  make test-system
+elif [ "${1}" = "test-override" ] ; then
+  # Python path must include the test directory in order for the test validators
+  # to be loadable.
+  echo "If you wish to run tests, please provide a command to docker compose: test-unit, test-integration, test-system"
 else
   if [ $# -eq 0 ] ; then
     workers=17
@@ -44,6 +66,7 @@ else
     python "${script_dir}/../lib/cli/prepare-arango.py"
     workers=1
     log_level=debugr
+ 
   elif [ "${1}" = "test" ] ; then
     # Python path must include the test directory in order for the test validators
     # to be loadable.

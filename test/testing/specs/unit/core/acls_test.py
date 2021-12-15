@@ -1,17 +1,17 @@
 import datetime
 
-from SampleService.core.acls import SampleACL, SampleACLOwnerless, SampleACLDelta
-from SampleService.core.errors import IllegalParameterError, UnauthorizedError
 from pytest import raises
-
+from SampleService.core.acls import (SampleACL, SampleACLDelta,
+                                     SampleACLOwnerless)
+from SampleService.core.errors import IllegalParameterError, UnauthorizedError
 from testing.shared.common import dt
 from testing.shared.test_utils import assert_exception_correct
 from testing.specs.unit.unit_common import u
 
-
 #
 # Tests
 #
+
 
 def test_build_ownerless():
     a = SampleACLOwnerless()

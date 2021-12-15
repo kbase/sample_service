@@ -1,7 +1,6 @@
 from _pytest.python_api import raises
-
-from SampleService.SampleServiceImpl import SampleService
 from SampleService.core.errors import MissingParameterError
+from SampleService.SampleServiceImpl import SampleService
 from testing.shared.test_utils import assert_exception_correct
 
 

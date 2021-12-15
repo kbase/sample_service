@@ -7,13 +7,23 @@
 # a single unhappy path test unless otherwise warranted.
 
 from pytest import raises
-# Utilities
-from test_constants import TOKEN_SERVICE, TOKEN2, TOKEN1, USER4, USER3, USER2, USER1, TOKEN4, TOKEN3
-from test_utils import assert_exception_correct
-
 from SampleService.core.acls import AdminPermission
 from SampleService.core.user import UserID
-from SampleService.core.user_lookup import KBaseUserLookup, InvalidTokenError
+from SampleService.core.user_lookup import InvalidTokenError, KBaseUserLookup
+
+# Utilities
+from testing.shared.test_constants import (
+    TOKEN1,
+    TOKEN2,
+    TOKEN3,
+    TOKEN4,
+    TOKEN_SERVICE,
+    USER1,
+    USER2,
+    USER3,
+    USER4,
+)
+from testing.shared.test_utils import assert_exception_correct
 
 
 def _user_lookup_fail(userlookup, users, expected):
@@ -44,8 +54,9 @@ def _is_admin_fail(userlookup, user, expected):
 def test_user_lookup_build_fail_bad_token(auth_url):
     _user_lookup_build_fail(
         auth_url,
-        'tokentokentoken!',
-        InvalidTokenError('KBase auth server reported token is invalid.'))
+        "tokentokentoken!",
+        InvalidTokenError("KBase auth server reported token is invalid."),
+    )
 
 
 # TODO: not valid tests?
@@ -54,9 +65,10 @@ def test_user_lookup_build_fail_bad_token(auth_url):
 #
 def test_user_lookup_build_fail_bad_auth_url(auth_url):
     _user_lookup_build_fail(
-        auth_url + '/foo',
+        auth_url + "/foo",
         TOKEN1,
-        IOError('Error from KBase auth server: HTTP 404 Not Found'))
+        IOError("Error from KBase auth server: HTTP 404 Not Found"),
+    )
 
 
 def test_user_lookup(auth_url):
@@ -76,25 +88,42 @@ def test_user_lookup_cache(auth_url):
 
 def test_user_lookup_bad_users(auth_url):
     ul = KBaseUserLookup(auth_url, TOKEN1)
-    assert ul.invalid_users(
-        [UserID('nouserhere'), UserID(USER1), UserID(USER2), UserID('whooptydoo'),
-         UserID(USER3)]) == [UserID('nouserhere'), UserID('whooptydoo')]
+    assert (
+        ul.invalid_users(
+            [
+                UserID("nouserhere"),
+                UserID(USER1),
+                UserID(USER2),
+                UserID("whooptydoo"),
+                UserID(USER3),
+            ]
+        )
+        == [UserID("nouserhere"), UserID("whooptydoo")]
+    )
 
 
 def test_user_lookup_fail_bad_args(auth_url):
     ul = KBaseUserLookup(auth_url, TOKEN1)
-    _user_lookup_fail(ul, None, ValueError('usernames cannot be None'))
-    _user_lookup_fail(ul, [UserID('foo'), UserID('bar'), None], ValueError(
-        'Index 2 of iterable usernames cannot be a value that evaluates to false'))
+    _user_lookup_fail(ul, None, ValueError("usernames cannot be None"))
+    _user_lookup_fail(
+        ul,
+        [UserID("foo"), UserID("bar"), None],
+        ValueError(
+            "Index 2 of iterable usernames cannot be a value that evaluates to false"
+        ),
+    )
 
 
 def test_user_lookup_fail_bad_username(auth_url):
     userlookup = KBaseUserLookup(auth_url, TOKEN1)
     with raises(Exception) as exception:
-        userlookup.is_admin([UserID('1')])
+        userlookup.is_admin([UserID("1")])
         # Only use the prefix for the error message, as the rest of it, supplied by the
         # auth service, is quite long, and the precise text is not important here.
-        expected = 'The KBase auth server is being very assertive about one of the usernames being illegal'
+        expected = (
+            "The KBase auth server is being very assertive about one of the usernames "
+            "being illegal"
+        )
         assert exception.value.startswith(expected)
 
 
@@ -104,22 +133,20 @@ def test_is_admin(auth_url):
     f = AdminPermission.FULL
 
     def check_is_admin(results, full_roles=None, read_roles=None):
-        ul = KBaseUserLookup(
-            auth_url,
-            TOKEN_SERVICE,
-            full_roles,
-            read_roles)
+        ul = KBaseUserLookup(auth_url, TOKEN_SERVICE, full_roles, read_roles)
 
-        for token, username, roles in zip([TOKEN1, TOKEN2, TOKEN3, TOKEN4], [USER1, USER2, USER3, USER4], results):
+        for token, username, roles in zip(
+            [TOKEN1, TOKEN2, TOKEN3, TOKEN4], [USER1, USER2, USER3, USER4], results
+        ):
             assert ul.is_admin(token) == (roles, username)
 
     check_is_admin([n, n, n, n])
-    check_is_admin([f, f, n, n], ['fulladmin1'])
-    check_is_admin([n, f, n, n], ['fulladmin2'])
-    check_is_admin([n, n, r, n], None, ['readadmin1'])
-    check_is_admin([n, r, n, n], None, ['readadmin2'])
-    check_is_admin([n, f, n, n], ['fulladmin2'], ['readadmin2'])
-    check_is_admin([n, f, r, n], ['fulladmin2'], ['readadmin1'])
+    check_is_admin([f, f, n, n], ["fulladmin1"])
+    check_is_admin([n, f, n, n], ["fulladmin2"])
+    check_is_admin([n, n, r, n], None, ["readadmin1"])
+    check_is_admin([n, r, n, n], None, ["readadmin2"])
+    check_is_admin([n, f, n, n], ["fulladmin2"], ["readadmin2"])
+    check_is_admin([n, f, r, n], ["fulladmin2"], ["readadmin1"])
 
 
 def test_is_admin_cache(auth_url):
@@ -134,12 +161,19 @@ def test_is_admin_cache(auth_url):
 def test_is_admin_fail_bad_input(auth_url):
     ul = KBaseUserLookup(auth_url, TOKEN_SERVICE)
 
-    _is_admin_fail(ul, None, ValueError('token cannot be a value that evaluates to false'))
-    _is_admin_fail(ul, '', ValueError('token cannot be a value that evaluates to false'))
+    _is_admin_fail(
+        ul, None, ValueError("token cannot be a value that evaluates to false")
+    )
+    _is_admin_fail(
+        ul, "", ValueError("token cannot be a value that evaluates to false")
+    )
 
 
 def test_is_admin_fail_bad_token(auth_url):
     ul = KBaseUserLookup(auth_url, TOKEN_SERVICE)
 
-    _is_admin_fail(ul, 'bad token here', InvalidTokenError(
-        'KBase auth server reported token is invalid.'))
+    _is_admin_fail(
+        ul,
+        "bad token here",
+        InvalidTokenError("KBase auth server reported token is invalid."),
+    )

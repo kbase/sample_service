@@ -13,22 +13,19 @@ MAKEFILE_DIR:=$(strip $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST)))))
 # tests in a specific file or directory
 TEST_SPEC ?= $(TEST_DIR)
 
-UNIT_TEST_SPEC ?= $(TEST_DIR)/unit
-INTEGRATION_TEST_SPEC ?= $(TEST_DIR)/integration
-SYSTEM_TEST_SPEC ?= $(TEST_DIR)/system
+UNIT_TEST_SPEC ?= $(TEST_DIR)/testing/specs/unit
+INTEGRATION_TEST_SPEC ?= $(TEST_DIR)/testing/specs/integration
+SYSTEM_TEST_SPEC ?= $(TEST_DIR)/testing/specs/system
 
 PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)
-INTEGRATION_PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)/specs/integration:$(MAKEFILE_DIR)/$(TEST_DIR)/shared
-SYSTEM_PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)/specs/system:$(MAKEFILE_DIR)/$(TEST_DIR)/shared
-UNIT_PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)/specs/unit:$(MAKEFILE_DIR)/$(TEST_DIR)/shared
 
-TEST_PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)/specs/unit:$(MAKEFILE_DIR)/$(TEST_DIR)
+TEST_PYPATH=$(MAKEFILE_DIR)/$(LIB_DIR):$(MAKEFILE_DIR)/$(TEST_DIR)
 
 
 TSTFL=$(MAKEFILE_DIR)/$(TEST_DIR)/$(TEST_CONFIG_FILE)
-INTEGRATION_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/specs/integration/$(TEST_CONFIG_FILE)
-SYSTEM_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/specs/system/$(TEST_CONFIG_FILE)
-UNIT_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/specs/unit/$(TEST_CONFIG_FILE)
+INTEGRATION_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/testing/specs/integration/$(TEST_CONFIG_FILE)
+SYSTEM_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/testing/specs/system/$(TEST_CONFIG_FILE)
+UNIT_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/testing/specs/unit/$(TEST_CONFIG_FILE)
 
 .PHONY: test
 
@@ -66,15 +63,11 @@ validate-types-test:
 	echo "Running type validation in 'test' (mypy)"
 	echo "WARNING: test type validation disabled"
 
-test-begin:
-	coverage erase
 
-test-finish:
-	coverage html
 
 test-integration:
 	@echo "Running integration tests (pytest) in $(INTEGRATION_TEST_SPEC)"
-	PYTHONPATH=$(INTEGRATION_PYPATH) SAMPLESERV_TEST_FILE=$(INTEGRATION_TEST_CONFIG) \
+	PYTHONPATH=$(TEST_PYPATH) SAMPLESERV_TEST_FILE=$(INTEGRATION_TEST_CONFIG) \
 		pytest --verbose \
 		    --cov $(LIB_DIR)/$(SERVICE_CAPS) \
 			--cov-append \
@@ -83,12 +76,12 @@ test-integration:
 
 test-system:
 	@echo "Running service tests (pytest) in $(SYSTEM_TEST_SPEC)"
-	PYTHONPATH=$(SYSTEM_PYPATH) SAMPLESERV_TEST_FILE=$(SYSTEM_TEST_CONFIG) \
+	PYTHONPATH=$(TEST_PYPATH) SAMPLESERV_TEST_FILE=$(SYSTEM_TEST_CONFIG) \
 		pytest --verbose \
 			$(SYSTEM_TEST_SPEC)
 
 test-unit:
-	@echo "Running unit tests (pytest) in $(UNIT_TEST_SPEC)"
+	@echo "Running unit tests (pytest) in $(UNIT_TEST_SPEC) with path $(TEST_PYPATH)"
 	PYTHONPATH=$(TEST_PYPATH) SAMPLESERV_TEST_FILE=$(UNIT_TEST_CONFIG) \
 		pytest --verbose \
 			--cov $(LIB_DIR)/$(SERVICE_CAPS) \
@@ -104,8 +97,14 @@ test-sdkless: validate-types-src validate-types-test test-unit test-integration
 
 # to print test output immediately: --capture=tee-sys
 
+#####################
+# Run on host
+#####################
+
 clean:
 	rm -rfv $(LBIN_DIR)
+
+# Managing development and testing container orchestration
 
 start-dev-server:
 	sh scripts/start-dev-server.sh
@@ -124,3 +123,35 @@ stop-test-server:
 
 remove-test-server:
 	sh scripts/remove-test-server.sh
+
+# Running tests
+
+host-test-begin:
+	coverage erase
+
+host-test-finish:
+	coverage html
+
+host-test-unit: 
+	@echo "Running unit tests..."
+	docker compose -f docker-compose-unit-test.yml run test
+	docker compose -f docker-compose-unit-test.yml rm -f
+	@echo "DONE"
+
+host-tests: host-test-begin host-test-unit host-test-finish
+
+host-test-integration:
+	@echo "Running unit tests..."
+	docker compose -f docker-compose.yml -f docker-compose-test-integration.yml run test test-integration
+	docker compose -f docker-compose.yml -f docker-compose-test-integration.yml stop
+	docker compose -f docker-compose.yml -f docker-compose-test-integration.yml rm -f
+	@echo "DONE"
+
+host-test-system:
+	@echo "Running unit tests..."
+	docker compose -f docker-compose.yml -f docker-compose-test-integration.yml run test test-system
+	docker compose -f docker-compose.yml -f docker-compose-test-integration.yml stop
+	docker compose -f docker-compose.yml -f docker-compose-test-integration.yml rm -f
+	@echo "DONE"
+
+# Run in container
