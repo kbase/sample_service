@@ -13,6 +13,7 @@ pymongo = "*"
 semver = "*"
 ipython = "*"
 black = "*"
+coverage-lcov = "*"
 
 [packages]
 python-arango = "==5.0.0"

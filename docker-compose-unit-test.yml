@@ -11,6 +11,6 @@ services:
       dockerfile: Dockerfile
     volumes:
       - "${PWD}:/kb/module"
-    command: [ 'test-unit' ]
+    command: [ 'test-override' ]
 
   

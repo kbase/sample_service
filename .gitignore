@@ -11,6 +11,6 @@ __temp
 # Testing
 test/test.cfg
 test_local
-
 htmlcov
 .coverage
+cov_profile.lcov

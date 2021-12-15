@@ -64,6 +64,14 @@ validate-types-test:
 	echo "WARNING: test type validation disabled"
 
 
+test-begin:
+	coverage erase
+
+test-end:
+	@echo "Creating html coverage report"
+	coverage html
+	@echo "Converting coverage to lcov"
+	coverage-lcov --data_file_path .coverage --output_file_path cov_profile.lcov
 
 test-integration:
 	@echo "Running integration tests (pytest) in $(INTEGRATION_TEST_SPEC)"
@@ -88,6 +96,7 @@ test-unit:
 			--cov-append \
 			--cov-config=$(TEST_DIR)/coveragerc \
 			$(UNIT_TEST_SPEC)
+	
 
 
 test-sdkless: validate-types-src validate-types-test test-unit test-integration
@@ -124,21 +133,25 @@ stop-test-server:
 remove-test-server:
 	sh scripts/remove-test-server.sh
 
+
 # Running tests
 
-host-test-begin:
-	coverage erase
+host-test-begin: 
+	@echo "Beginning tests..."
+	docker compose -f docker-compose-unit-test.yml run test test-begin
 
-host-test-finish:
-	coverage html
+host-test-end: 
+	@echo "Ending tests..."
+	docker compose -f docker-compose-unit-test.yml run test test-end
 
 host-test-unit: 
 	@echo "Running unit tests..."
-	docker compose -f docker-compose-unit-test.yml run test
+	docker compose -f docker-compose-unit-test.yml run test test-unit
 	docker compose -f docker-compose-unit-test.yml rm -f
 	@echo "DONE"
 
-host-tests: host-test-begin host-test-unit host-test-finish
+host-tests: host-test-begin host-test-unit host-test-end
+
 
 host-test-integration:
 	@echo "Running unit tests..."

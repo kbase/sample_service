@@ -56,16 +56,16 @@ jobs:
           echo "BUILD_DATE=${{ env.BUILD_DATE }}"
 
       # Run unit tests
-      # - name: Run Unit Tests
-      #   run: sh scripts/automation/run-tests.sh
+      - name: Run unit tests
+        run: make host-tests
 
-      # - name: Cheap Coverage Report
-      #   uses: devmasx/coverage-check-action@v1.2.0
-      #   with:
-      #     type: lcov
-      #     result_path: testing_output/cov_profile.lcov
-      #     min_coverage: 10
-      #     token: ${{ github.token }}
+      - name: Cheap Coverage Report
+        uses: devmasx/coverage-check-action@v1.2.0
+        with:
+          type: lcov
+          result_path: cov_profile.lcov
+          min_coverage: 10
+          token: ${{ github.token }}
 
       #
       # Create friendly image tags

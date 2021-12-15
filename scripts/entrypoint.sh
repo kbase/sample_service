@@ -34,6 +34,18 @@ elif [ "${1}" = "wait" ] ; then
   export PYTHONPATH="$script_dir/../test:$PYTHONPATH"
   echo "[ENTRYPOINT] wait mode with Python path: ${PYTHONPATH}"
   while sleep 3600; do :; done
+elif [ "${1}" = "test-begin" ] ; then
+  # Python path must include the test directory in order for the test validators
+  # to be loadable.
+  export PYTHONPATH="$script_dir/../test:$PYTHONPATH"
+  echo "[ENTRYPOINT] begin tests"
+  make test-begin
+elif [ "${1}" = "test-end" ] ; then
+  # Python path must include the test directory in order for the test validators
+  # to be loadable.
+  export PYTHONPATH="$script_dir/../test:$PYTHONPATH"
+  echo "[ENTRYPOINT] end tests"
+  make test-end
 elif [ "${1}" = "test-unit" ] ; then
   # Python path must include the test directory in order for the test validators
   # to be loadable.
