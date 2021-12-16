@@ -34,7 +34,7 @@ In other words, one sample service container is running the service, another is 
 This is required
 
 ```shell
-export mock_dataset_path=`pwd`/test/data/mock_services
+export MOCK_DATASET_PATH=`pwd`/test/data/mock_services
 ```
 
 in order to let the tests know where to find the mock services data (for the mock services) in the docker compose.

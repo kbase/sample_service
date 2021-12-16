@@ -51,10 +51,10 @@ jobs:
         run: make host-test-unit
 
       - name: Run integration tests
-        run: make host-test-integration
+        run:  MOCK_DATASET_PATH=${PWD}/test/data/mock_services make host-test-integration
 
       - name: Run system tests
-        run: make host-test-system
+        run:  MOCK_DATASET_PATH=${PWD}/test/data/mock_services make host-test-system
 
       - name: Run test end tasks
         run: make host-test-end

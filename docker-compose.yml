@@ -54,10 +54,6 @@ services:
       - auth_read_admin_roles=readadmin1,readadmin2
       - auth_full_admin_roles=fulladmin1,fulladmin2
       #
-      # For test validation modules
-      #
-      - EXTRA_PYTHONPATH=$EXTRA_PYTHONPATH
-      #
       # db consistency checker
       #
       - consistency_checker_enabled=false
@@ -110,6 +106,6 @@ services:
       - "3333:3333"
     volumes:
       # The container expects all mock data to be in /data
-      - ${mock_dataset_path}:/data
+      - ${MOCK_DATASET_PATH}:/data
     networks:
       - kbase-dev
