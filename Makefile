@@ -73,6 +73,11 @@ test-end:
 	@echo "Converting coverage to lcov"
 	coverage-lcov --data_file_path .coverage --output_file_path cov_profile.lcov
 
+wait-for-sample-service:
+	@echo "Waiting for SampleService to be available"
+	@[ "${SAMPLE_SERVICE_URL}" ] || (echo "! Environment variable SAMPLE_SERVICE_URL must be set"; exit 1)
+	PYTHONPATH=$(TEST_PYPATH) python -c "from testing.shared.wait_for import wait_for_sample_service; wait_for_sample_service('$(SAMPLE_SERVICE_URL)', 30, 1)"
+
 test-integration:
 	@echo "Running integration tests (pytest) in $(INTEGRATION_TEST_SPEC)"
 	PYTHONPATH=$(TEST_PYPATH) SAMPLESERV_TEST_FILE=$(INTEGRATION_TEST_CONFIG) \
@@ -138,33 +143,38 @@ remove-test-server:
 
 host-test-begin: 
 	@echo "Beginning tests..."
-	docker compose -f docker-compose-unit-test.yml run test test-begin
+	docker compose -f docker-compose-test.yml run test test-begin
 
 host-test-end: 
 	@echo "Ending tests..."
-	docker compose -f docker-compose-unit-test.yml run test test-end
+	docker compose -f docker-compose-test.yml run test test-end
 
 host-test-unit: 
 	@echo "Running unit tests..."
-	docker compose -f docker-compose-unit-test.yml run test test-unit
-	docker compose -f docker-compose-unit-test.yml rm -f
+	docker compose -f docker-compose-test.yml run test test-unit
+	docker compose -f docker-compose-test.yml rm -f
 	@echo "DONE"
 
 host-tests: host-test-begin host-test-unit host-test-end
 
 
+#
+# docker-compose-test.yml adds the testing container
+# docker-compose-test-integration.yml adds support for integrating with the main docker compose services
+# Note: MOCK_DATASET_PATH needs to be set 
+#
 host-test-integration:
 	@echo "Running unit tests..."
-	docker compose -f docker-compose.yml -f docker-compose-test-integration.yml run test test-integration
-	docker compose -f docker-compose.yml -f docker-compose-test-integration.yml stop
-	docker compose -f docker-compose.yml -f docker-compose-test-integration.yml rm -f
+	docker compose -f docker-compose.yml -f docker-compose-test.yml -f docker-compose-test-integration.yml run test test-integration
+	docker compose -f docker-compose.yml -f docker-compose-test.yml -f docker-compose-test-integration.yml stop
+	docker compose -f docker-compose.yml -f docker-compose-test.yml -f docker-compose-test-integration.yml rm -f
 	@echo "DONE"
 
 host-test-system:
 	@echo "Running unit tests..."
-	docker compose -f docker-compose.yml -f docker-compose-test-integration.yml run test test-system
-	docker compose -f docker-compose.yml -f docker-compose-test-integration.yml stop
-	docker compose -f docker-compose.yml -f docker-compose-test-integration.yml rm -f
+	docker compose -f docker-compose.yml -f docker-compose-test.yml -f docker-compose-test-integration.yml run test test-system
+	docker compose -f docker-compose.yml -f docker-compose-test.yml -f docker-compose-test-integration.yml stop
+	docker compose -f docker-compose.yml -f docker-compose-test.yml -f docker-compose-test-integration.yml rm -f
 	@echo "DONE"
 
 # Run in container
