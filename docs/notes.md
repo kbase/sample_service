@@ -91,3 +91,10 @@ make remove-test-server
 ```
 
 
+or really 
+
+
+```shell
+export MOCK_DATASET_PATH=`pwd`/test/data/mock_services
+make host-test-integration
+```
