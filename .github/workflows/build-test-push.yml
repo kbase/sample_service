@@ -1,5 +1,5 @@
 ---
-name: Build and Push Up main, feature-, fix- branches, PRs, releases
+name: Build & Test
 on:
   push:
     branches:
