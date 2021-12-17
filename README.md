@@ -23,4 +23,4 @@ interactive version is
 
 ## Documentation
 
-Please see the [Wiki](../../wiki) for detailed documentation.
+Please see the [Documentation](./docs/index.md) for detailed information on testing and development.

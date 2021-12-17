@@ -1,41 +1,83 @@
 # Testing
 
-Sample service tests are divided into unit and integration tests.
 
-Unit tests require no specific runtime resources, other than files in the repo. The unit tests are located in `test/unit` and generate coverage in `test/
+## Requirements
 
+Although this service is written in Python, in order to test it you only need `docker`, `make`, and an `sh`-compatible shell.
 
-Running the tests:
+The automation tools use `make` and `sh`, which configure and run docker containers via docker-compose. Test output is written to the console, and also produces html coverage reports
 
-## Overall
+- docker
+- make
 
-```bash
-make host-tests
-```
+### Docker Images
 
-which takes care of clearing the coverage, running all tests, and compiling the html coverage report.
+The required docker images are noted in the `docker-compose.yml` file in the root of the repo. 
 
-## unit tests
+The service images in the docker compose file should match those that are used in actual deployments (or perhaps the relationship is reversed - one should only deploy with versions that match the testing images.)
 
-Unit tests may be run in a standalone container. We can use the service image for this. We specify the "unit-test" option, which causes the entrypoint script to run the unit tests.
+Generally, the required services are:
 
-```bash
-docker compose -f docker-compose-unit-test.yml run sampleservice
-```
+- ArangoDB 3.5.1+ with RocksDB as the storage engine
+- Kafa 2.5.0+
+- KBase Mock Services
 
-## integration tests
+### Divergence SDK Tests
 
-Integration tests must run with both the source code available, and a running sample service with all dependent services.
+As noted elsewhere, this service is designed to be relatively compliant with those generated and managed by the [KBase SDK](https://github.com/kbase/kb_sdk). This assists those familiar with KBase App development. However, due to constraints of the KB-SDK, tests cannot currently be run by the standard mechanism.
 
-This is accomplished by running the test server stack (docker-compose.yml) and invoking "run" for a secondary sample service container.
+### To Run Tests
 
-In other words, one sample service container is running the service, another is just running the integration tests.
+Tests are divided into three sets: unit, integration, and system
 
-This is required
+- unit tests run only against code, requiring no services to be spun up
+- integration tests run against service code, but do require one or more services to be running
+- system tests operate solely against the public api of the sample service, and do not require access to source code
+
+Each of these test suites may be run independently, or in sequence. 
+
+#### Unit Tests
+
+The basic invocation for unit tests is:
 
 ```shell
-export MOCK_DATASET_PATH=`pwd`/test/data/mock_services
+make host-test-unit
 ```
 
-in order to let the tests know where to find the mock services data (for the mock services) in the docker compose.
+Note that the make task is prefixed with `host-`. This indicates that the task is meant to be run on a host machine (developer, CI, etc.) rather than within the service instance (i.e. within the container.)
 
+This invocation with will:
+- create the testing container, which is identical to the service container, except that it does not start the service, but rather runs the unit tests.
+- run the unit tests inside the container
+- capture coverage data in the standard Python location, `.coverage`
+- because the repo directory is volume-mounted into the container, the coverage data should be available
+
+There are two make tasks which help with the preparation for tests and processing of coverage data.
+
+`make host-test-begin` clears the coverage data first; this is important because coverage data is otherwise accumulated into a single location from multiple testing runs
+
+`make host-test-end` creates both an LCOV-compatible file (`cov_profile.lcov` - for consumption by coverage tools, like CodeCov), and an html report (in `htmlcov` - suitable for a developer to inspect.)
+
+
+
+The Sample Service requires only 
+
+The Sample Service requires ArangoDB 3.5.1+ with RocksDB as the storage engine.
+
+If Kafka notifications are enabled, the Sample Service requires Kafka 2.5.0+.
+
+To run tests, MongoDB 3.6+ and the KBase Jars file repo are also required. Kafka is always
+required to run tests.
+
+See `.travis.yml` for an example of how to set up tests, including creating a `test.cfg` file
+from the `test/test.cfg.example` file.
+
+Once the dependencies are installed, run:
+
+```shell
+pipenv install --dev
+pipenv shell
+make test-sdkless
+```
+
+`kb-sdk test` does not currently pass.
