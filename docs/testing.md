@@ -22,7 +22,7 @@ Generally, the required services are:
 - Kafa 2.5.0+
 - KBase Mock Services
 
-### Divergence SDK Tests
+### Divergence from SDK Tests
 
 As noted elsewhere, this service is designed to be relatively compliant with those generated and managed by the [KBase SDK](https://github.com/kbase/kb_sdk). This assists those familiar with KBase App development. However, due to constraints of the KB-SDK, tests cannot currently be run by the standard mechanism.
 
@@ -34,7 +34,15 @@ Tests are divided into three sets: unit, integration, and system
 - integration tests run against service code, but do require one or more services to be running
 - system tests operate solely against the public api of the sample service, and do not require access to source code
 
-Each of these test suites may be run independently, or in sequence. 
+Each of these test suites may be run independently, or in sequence.
+
+#### Run All Tests
+
+You may run all tests with a single command
+
+```shell
+make host-test-all
+```
 
 #### Unit Tests
 
@@ -50,7 +58,7 @@ This invocation with will:
 - create the testing container, which is identical to the service container, except that it does not start the service, but rather runs the unit tests.
 - run the unit tests inside the container
 - capture coverage data in the standard Python location, `.coverage`
-- because the repo directory is volume-mounted into the container, the coverage data should be available
+    - since the repo directory is volume-mounted into the container, the coverage data should be available
 
 There are two make tasks which help with the preparation for tests and processing of coverage data.
 
