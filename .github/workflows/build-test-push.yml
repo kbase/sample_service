@@ -55,15 +55,45 @@ jobs:
           echo "CI_ACTION=$CI_ACTION"
           echo "BUILD_DATE=${{ env.BUILD_DATE }}"
 
-      # Run unit tests
+      # TODO: use tests as sub-workflow
+
+      # Prepare for tests
       - name: Run test begin tasks
         run: make host-test-begin
 
+      # Run unit tests
       - name: Run unit tests
         run: make host-test-unit
-      
+
+      # Run integration tests
+      - name: Run integration tests
+        run:  MOCK_DATASET_PATH=${PWD}/test/data/mock_services make host-test-integration
+
+      # Run system tests
+      - name: Run system tests
+        run:  MOCK_DATASET_PATH=${PWD}/test/data/mock_services make host-test-system
+
+      # Finish up tests (lcov)
       - name: Run test end tasks
         run: make host-test-end
+
+      # Clean up after tests.
+      - name: Stop and remove all test containers system tests
+        run:  MOCK_DATASET_PATH=${PWD}/test/data/mock_services make host-test-integration-stop
+
+      # Post-test tasks
+      - name: Cheap Coverage Report
+        uses: devmasx/coverage-check-action@v1.2.0
+        with:
+          type: lcov
+          result_path: cov_profile.lcov
+          min_coverage: 70
+          token: ${{ github.token }}
+
+      - name: Send to Codecov
+        uses: codecov/codecov-action@v2
+        with: 
+          files: ./cov_profile.lcov
 
       #
       # Create friendly image tags
@@ -107,17 +137,5 @@ jobs:
             VCS_REF=${{ github.sha }}
             BRANCH=${{ github.ref }}
             TAG=${{ github.ref }}
-          tags: ghcr.io/${{ env.CI_REPOSITORY_OWNER }}/${{ env.CI_REPOSITORY_NAME_SLUG }}:${{ env.IMAGE_TAG_NAME }}
+          tags: ghcr.io/${{ env.CI_REPOSITORY_OWNER }}/${{ env.CI_REPOSITORY_NAME }}:${{ env.IMAGE_TAG_NAME }}
 
-      - name: Cheap Coverage Report
-        uses: devmasx/coverage-check-action@v1.2.0
-        with:
-          type: lcov
-          result_path: cov_profile.lcov
-          min_coverage: 70
-          token: ${{ github.token }}
-
-      - name: Send to Codecov
-        uses: codecov/codecov-action@v2
-        with: 
-          files: ./cov_profile.lcov
