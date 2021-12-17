@@ -62,10 +62,6 @@ jobs:
       - name: Stop and remove all test containers system tests
         run:  MOCK_DATASET_PATH=${PWD}/test/data/mock_services make host-test-integration-stop
 
-  coverage:
-    needs: tests
-    runs-on: ubuntu-latest
-    steps:
       - name: Cheap Coverage Report
         uses: devmasx/coverage-check-action@v1.2.0
         with:
@@ -74,10 +70,6 @@ jobs:
           min_coverage: 70
           token: ${{ github.token }}
 
-  coveralls:
-    needs: tests
-    runs-on: ubuntu-latest
-    steps:
       - name: Send to coveralls
         uses: coverallsapp/github-action@master
         with:

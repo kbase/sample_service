@@ -109,10 +109,6 @@ jobs:
             TAG=${{ github.ref }}
           tags: ghcr.io/${{ env.CI_REPOSITORY_OWNER }}/${{ env.CI_REPOSITORY_NAME_SLUG }}:${{ env.IMAGE_TAG_NAME }}
 
-  coverage:
-    needs: build_test_push
-    runs-on: ubuntu-latest
-    steps:
       - name: Cheap Coverage Report
         uses: devmasx/coverage-check-action@v1.2.0
         with:
@@ -121,10 +117,6 @@ jobs:
           min_coverage: 70
           token: ${{ github.token }}
 
-  coveralls:
-    needs: build_test_push
-    runs-on: ubuntu-latest
-    steps:
       - name: Send to coveralls
         uses: coverallsapp/github-action@master
         with:
