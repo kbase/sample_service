@@ -146,19 +146,19 @@ def auth_url():
 
 
 @fixture(scope="session")
-def test_db(arango):
+def testing_db(arango):
     yield create_test_db(arango)
 
 
 @fixture(scope="function")
-def sample_service(test_db):
-    db = reset_collections(test_db)
+def sample_service(testing_db):
+    db = reset_collections(testing_db)
     yield {"url": SAMPLE_SERVICE_URL, "db": db}
 
 
 @fixture(scope="function")
-def sample_service_db(test_db):
-    yield reset_collections(test_db)
+def sample_service_db(testing_db):
+    yield reset_collections(testing_db)
 
 
 @fixture(scope="function")
