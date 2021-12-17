@@ -143,16 +143,16 @@ remove-test-server:
 
 host-test-begin: 
 	@echo "Beginning tests..."
-	docker compose -f docker-compose-test.yml run test test-begin
+	docker compose -f test/docker-compose-test.yml run test test-begin
 
 host-test-end: 
 	@echo "Ending tests..."
-	docker compose -f docker-compose-test.yml run test test-end
+	docker compose -f test/docker-compose-test.yml run test test-end
 
 host-test-unit: 
 	@echo "Running unit tests..."
-	docker compose -f docker-compose-test.yml run test test-unit
-	docker compose -f docker-compose-test.yml rm -f
+	docker compose -f test/docker-compose-test.yml run test test-unit
+	docker compose -f test/docker-compose-test.yml rm -f
 	@echo "Unit tests done"
 
 
@@ -161,27 +161,33 @@ host-test-unit:
 # docker-compose-test.yml adds the testing container
 # docker-compose-test-integration.yml adds support for integrating with the main docker compose services
 # Note: MOCK_DATASET_PATH needs to be set 
-#
-host-test-integration-start:
-	@echo "Starting integration test stack"
-	docker compose -f docker-compose.yml -f docker-compose-test.yml -f docker-compose-test-integration.yml run test test-integration
-	@echo "DONE"
+
 
 host-test-integration-stop:
 	@echo "Stopping integration test stack"
-	docker compose -f docker-compose.yml -f docker-compose-test.yml -f docker-compose-test-integration.yml stop
-	docker compose -f docker-compose.yml -f docker-compose-test.yml -f docker-compose-test-integration.yml rm -f
+	MOCK_DATASET_PATH=${PWD}/test/data/mock_services docker compose -f test/docker-compose.yml -f test/docker-compose-test.yml -f test/docker-compose-test-integration.yml stop
+	MOCK_DATASET_PATH=${PWD}/test/data/mock_services docker compose -f test/docker-compose.yml -f test/docker-compose-test.yml -f test/docker-compose-test-integration.yml rm -f
 	@echo "Integration test stack stopped"
 
 host-test-integration:
 	@echo "Running integration tests..."
-	docker compose -f docker-compose.yml -f docker-compose-test.yml -f docker-compose-test-integration.yml run test test-integration
+	MOCK_DATASET_PATH=${PWD}/test/data/mock_services \
+	docker compose \
+		-f test/docker-compose.yml \
+		-f test/docker-compose-test.yml \
+		-f test/docker-compose-test-integration.yml \
+		run test test-integration
 	@echo "Integration tests done."
 
 host-test-system:
 	@echo "Running system tests..."
-	docker compose -f docker-compose.yml -f docker-compose-test.yml -f docker-compose-test-integration.yml run test test-system
-	@echo "System tests done."
+	MOCK_DATASET_PATH=${PWD}/test/data/mock_services \
+	docker compose \
+		-f test/docker-compose.yml \
+		-f test/docker-compose-test.yml \
+		-f test/docker-compose-test-integration.yml \
+		run test test-system
+	@echo "Integration tests done."
 
 
-host-tests: host-test-begin host-test-unit host-test-integration host-test-system host-test-end host-test-integration-stop 
+host-test-all: host-test-begin host-test-unit host-test-integration host-test-system host-test-end host-test-integration-stop 

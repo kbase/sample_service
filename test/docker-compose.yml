@@ -8,8 +8,7 @@ services:
   sampleservice:
     image: sampleservice:test
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
     depends_on:
       - arangodb
       - kafka
@@ -20,7 +19,6 @@ services:
       - "5000:5000"
     volumes:
       - "${PWD}:/kb/module"
-    #      - "${PWD}/test:/kb/module/test"
     environment:
       # TODO: move to .env file; makes this file smaller, and allows us to swap out envs
       # for different use cases.

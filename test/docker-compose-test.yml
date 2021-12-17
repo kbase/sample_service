@@ -8,11 +8,10 @@ services:
   test:
     image: sampleservice:test
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
     volumes:
       - "${PWD}:/kb/module"
-    entrypoint: ['./scripts/entrypoint-testing.sh']
+    entrypoint: ['./test/scripts/entrypoint.sh']
     command: [ 'noop' ]
 
   
