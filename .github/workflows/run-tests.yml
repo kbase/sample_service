@@ -63,17 +63,21 @@ jobs:
         run:  MOCK_DATASET_PATH=${PWD}/test/data/mock_services make host-test-integration-stop
 
   coverage:
-    - name: Cheap Coverage Report
-      uses: devmasx/coverage-check-action@v1.2.0
-      with:
-        type: lcov
-        result_path: cov_profile.lcov
-        min_coverage: 70
-        token: ${{ github.token }}
+    needs: tests
+    steps:
+      - name: Cheap Coverage Report
+        uses: devmasx/coverage-check-action@v1.2.0
+        with:
+          type: lcov
+          result_path: cov_profile.lcov
+          min_coverage: 70
+          token: ${{ github.token }}
 
   coveralls:
-    - name: Send to coveralls
-      uses: coverallsapp/github-action@master
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        path-to-lcov: ./cov_profile.lcov
+    needs: tests
+    steps:
+      - name: Send to coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: ./cov_profile.lcov
