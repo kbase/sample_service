@@ -70,8 +70,7 @@ jobs:
           min_coverage: 70
           token: ${{ github.token }}
 
-      - name: Send to coveralls
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: ./cov_profile.lcov
+      - name: Send to Codecov
+        uses: codecov/codecov-action@v2
+        with: 
+          files: ./cov_profile.lcov
