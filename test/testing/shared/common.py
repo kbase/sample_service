@@ -11,8 +11,6 @@ import yaml
 from kafka import KafkaConsumer
 from testing.shared import test_utils
 from testing.shared.service_client import ServiceClient
-
-# ??
 from testing.shared.test_cases import CASE_01
 from testing.shared.test_constants import (
     ARANGODB_PORT,
@@ -36,7 +34,7 @@ from testing.shared.test_constants import (
 )
 from testing.shared.test_utils import assert_ms_epoch_close_to_now
 
-VER = "0.1.0-alpha28"
+VER = "0.1.0"
 
 
 def replace_acls(url, sample_id, token, acls, as_admin=0, debug=False):
@@ -352,7 +350,7 @@ def create_deploy_cfg():
 
     cfg[ss]["auth-service-url"] = (
         f"http://mockservices:{MOCK_SERVICES_PORT}/services/auth/"
-        + "api/legacy/KBase/Sessions/Login"
+        "api/legacy/KBase/Sessions/Login"
     )
     cfg[ss]["auth-service-url-allow-insecure"] = "true"
 
