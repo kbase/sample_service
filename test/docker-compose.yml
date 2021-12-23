@@ -16,7 +16,9 @@ services:
     networks:
       - kbase-dev
     ports:
-      - "5000:5000"
+      # Use 5555 for host port, as macOS Monterey uses it by default for airplay.
+      # (Don't really need to use the port, but it can be handy to poke at it from the host)
+      - "5555:5000"
     volumes:
       - "${PWD}:/kb/module"
     environment:
@@ -83,7 +85,7 @@ services:
       - ALLOW_ANONYMOUS_LOGIN=yes
 
   kafka:
-    image: "bitnami/kafka:2.6.3"
+    image: "bitnami/kafka:2.6.0"
     depends_on:
       - zookeeper
     networks:
