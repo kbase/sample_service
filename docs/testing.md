@@ -100,7 +100,7 @@ All tests should be run through the provided `make` tasks, which are divided int
 
 All tests run with a special entrypoint script, located in `test/scripts/entrypoint.sh`. This eliminates the mixing of the production and testing support within the entryoint, and simplifies each file (which have become more complex with the addition of entrypoint commands to invoke tests.)
 
-#### Unit Tests
+### Unit Tests
 
 Unit tests require only the source code from the project and a suitable Python environment. They are run directly in the service container, and require only a simple docker-compose file, `test/docker-compose-unit.yml`, which creates and invokes a `test` container, which is based on the service image but does not run the sample service upon startup.
 
@@ -147,4 +147,4 @@ It is an incomplete projeect, but nevertheless works well in this case.
 
 ## GitHub Action Workflows
 
-All of the tests are run in GitHub
+All tests are run in GitHub Action workflows. See [GitHub Action Workflows](./github-action-workflows.md) for details.
