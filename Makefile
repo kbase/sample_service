@@ -129,15 +129,6 @@ stop-dev-server:
 remove-dev-server:
 	sh scripts/remove-dev-server.sh
 
-start-test-server:
-	sh scripts/start-test-server.sh
-
-stop-test-server:
-	sh scripts/stop-test-server.sh
-
-remove-test-server:
-	sh scripts/remove-test-server.sh
-
 
 # Running tests
 
@@ -190,4 +181,6 @@ host-test-system:
 	@echo "Integration tests done."
 
 
-host-test-all: host-test-begin host-test-unit host-test-integration host-test-system host-test-end host-test-integration-stop 
+host-test-all: host-test-begin host-test-unit host-test-integration host-test-system host-test-end host-test-integration-stop
+
+host-test-unit-all: host-test-begin host-test-unit host-test-end

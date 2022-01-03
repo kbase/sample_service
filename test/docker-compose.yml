@@ -1,6 +1,6 @@
 version: "3.8"
 
-# This docker-compose is for developer workflows, not for running in production.
+# This docker-compose is for testing and development workflows, not for running in production.
 networks:
   kbase-dev:
     name: kbase-dev
@@ -18,7 +18,7 @@ services:
     ports:
       # Use 5555 for host port, as macOS Monterey uses it by default for airplay.
       # (Don't really need to use the port, but it can be handy to poke at it from the host)
-      - "5555:5000"
+      - "${PORT:-5000}:5000"
     volumes:
       - "${PWD}:/kb/module"
     environment:

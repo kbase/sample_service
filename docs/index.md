@@ -14,6 +14,8 @@ interactive version is
 
 - [Configuration](./configuration.md)
 - [Testing](./testing.md)
+- Development
+  - [With Docker Containers](./development/local-docker.md)
 - [API Errors](./errors.md)
 - [Validation](./validation.md)
   - [Built-in Validators](./built-in-validators.md)
