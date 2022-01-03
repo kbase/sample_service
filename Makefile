@@ -134,16 +134,15 @@ remove-dev-server:
 
 host-test-begin: 
 	@echo "Beginning tests..."
-	docker compose -f test/docker-compose-test.yml run test test-begin
+	docker compose -f test/docker-compose-test.yml run --rm test test-begin
 
 host-test-end: 
 	@echo "Ending tests..."
-	docker compose -f test/docker-compose-test.yml run test test-end
+	docker compose -f test/docker-compose-test.yml run --rm test test-end
 
 host-test-unit: 
 	@echo "Running unit tests..."
-	docker compose -f test/docker-compose-test.yml run test test-unit
-	docker compose -f test/docker-compose-test.yml rm -f
+	docker compose -f test/docker-compose-test.yml run --rm test test-unit
 	@echo "Unit tests done"
 
 
