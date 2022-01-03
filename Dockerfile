@@ -11,7 +11,6 @@ RUN \
 
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-
 COPY ./ /kb/module
 WORKDIR /kb/module
 RUN mkdir -p /kb/module/work
@@ -19,8 +18,6 @@ RUN chmod -R a+rw /kb/module
 RUN pip install --upgrade pip \
     && pip install -r requirements.txt \
     && pipenv install --system --deploy --ignore-pipfile --dev
-
-EXPOSE 5000
 
 ENTRYPOINT [ "./scripts/entrypoint.sh" ]
 
