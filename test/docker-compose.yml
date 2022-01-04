@@ -59,7 +59,7 @@ services:
       #
       - consistency_checker_enabled=false
       - consistency_checker_interval=60
-    command: [ 'test' ]
+    command: [ 'develop' ]
 
   # Arangodb server in cluster mode
   arangodb:
