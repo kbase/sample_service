@@ -28,6 +28,7 @@ from SampleService.core.api_translation import (
     get_version_from_object,
     links_to_dicts,
     sample_to_dict,
+    validate_samples_params,
 )
 from SampleService.core.data_link import DataLink
 from SampleService.core.errors import (
@@ -233,6 +234,61 @@ def test_to_epochmilliseconds_fail_bad_args():
     assert_exception_correct(
         got.value, ValueError("d cannot be a value that evaluates to false")
     )
+
+
+def test_validate_samples_params_minimal():
+    params = {
+        "samples": [
+            {
+                "version": 7,  # should be ignored
+                "save_date": 9,  # should be ignored
+                "name": "foo",
+                "node_tree": [{"id": "foo", "type": "BioReplicate"}],
+            }
+        ]
+    }
+    expected = [Sample([SampleNode("foo")], "foo")]
+
+    assert validate_samples_params(params) == expected
+
+
+def test_validate_samples_params_fail_no_samples():
+    params = {"samples": []}
+    with raises(IllegalParameterError, match="params must contain list of `samples`"):
+        assert validate_samples_params(params)
+
+
+def test_validate_samples_params_fail_bad_node_tree():
+    params = {
+        "samples": [
+            {
+                "version": 7,  # should be ignored
+                "save_date": 9,  # should be ignored
+                "name": "foo",
+                "node_tree": "bar",
+            }
+        ]
+    }
+    with raises(
+        IllegalParameterError, match="sample node tree must be present and a list"
+    ):
+        assert validate_samples_params(params)
+
+
+def test_validate_samples_params_fail_no_name():
+    params = {
+        "samples": [
+            {
+                "version": 7,  # should be ignored
+                "save_date": 9,  # should be ignored
+                "node_tree": [{"id": "foo", "type": "BioReplicate"}],
+            }
+        ]
+    }
+    with raises(
+        IllegalParameterError, match="sample name must be included as non-empty string"
+    ):
+        assert validate_samples_params(params)
 
 
 def test_create_sample_params_minimal():
