@@ -13,7 +13,7 @@ Here is the basic workflow:
 
 ```shell
 export MOCK_DATASET_PATH=`pwd`/test/data/mock_services
-make start-dev-server
+make host-start-dev-server
 ```
 
 After a few seconds, you should have an operational Sample Service running on http://localhost:5000.
@@ -21,10 +21,16 @@ After a few seconds, you should have an operational Sample Service running on ht
 To close up shop, halt the services with `Ctrl-C` and issue:
 
 ```shell
-make stop-dev-server
+make host-stop-dev-server
 ```
 
-to clean up the containers.
+and then
+
+```shell
+make host-remove-dev-server
+```
+
+to clean up the containers
 
 ## Port
 
@@ -37,7 +43,7 @@ E.g.
 ```shell
 export MOCK_DATASET_PATH=`pwd`/test/data/mock_services
 export PORT=5001
-make start-dev-server
+make host-start-dev-server
 ```
 
 ## Accessing the Service

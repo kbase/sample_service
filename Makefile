@@ -120,13 +120,13 @@ clean:
 
 # Managing development and testing container orchestration
 
-start-dev-server:
+host-start-dev-server:
 	sh scripts/start-dev-server.sh
 
-stop-dev-server:
+host-stop-dev-server:
 	sh scripts/stop-dev-server.sh
 
-remove-dev-server:
+host-remove-dev-server:
 	sh scripts/remove-dev-server.sh
 
 
