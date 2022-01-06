@@ -3,19 +3,16 @@ Methods for accessing workspace data.
 """
 
 from enum import IntEnum
-from typing import Dict as _Dict
-from typing import List, Optional
-from typing import Set as _Set
+from typing import List, Optional, Dict as _Dict, Set as _Set
 
-from installed_clients.baseclient import ServerError as _ServerError
 from installed_clients.WorkspaceClient import Workspace
+from installed_clients.baseclient import ServerError as _ServerError
+
 from SampleService.core.arg_checkers import check_string as _check_string
 from SampleService.core.arg_checkers import not_falsy as _not_falsy
 from SampleService.core.errors import IllegalParameterError as _IllegalParameterError
 from SampleService.core.errors import NoSuchUserError as _NoSuchUserError
-from SampleService.core.errors import (
-    NoSuchWorkspaceDataError as _NoSuchWorkspaceDataError,
-)
+from SampleService.core.errors import NoSuchWorkspaceDataError as _NoSuchWorkspaceDataError
 from SampleService.core.errors import UnauthorizedError as _UnauthorizedError
 from SampleService.core.user import UserID
 
@@ -24,7 +21,6 @@ class WorkspaceAccessType(IntEnum):
     """
     The different levels of workspace service access.
     """
-
     NONE = 1
     READ = 2
     WRITE = 3
@@ -33,16 +29,15 @@ class WorkspaceAccessType(IntEnum):
 
 _PERM_TO_PERM_SET: _Dict[WorkspaceAccessType, _Set[str]] = {
     WorkspaceAccessType.NONE: set(),
-    WorkspaceAccessType.READ: {"r", "w", "a"},
-    WorkspaceAccessType.WRITE: {"w", "a"},
-    WorkspaceAccessType.ADMIN: {"a"},
+    WorkspaceAccessType.READ: {'r', 'w', 'a'},
+    WorkspaceAccessType.WRITE: {'w', 'a'},
+    WorkspaceAccessType.ADMIN: {'a'}
 }
 
-_PERM_TO_PERM_TEXT = {
-    WorkspaceAccessType.READ: "read",
-    WorkspaceAccessType.WRITE: "write to",
-    WorkspaceAccessType.ADMIN: "administrate",
-}
+_PERM_TO_PERM_TEXT = {WorkspaceAccessType.READ: 'read',
+                      WorkspaceAccessType.WRITE: 'write to',
+                      WorkspaceAccessType.ADMIN: 'administrate'
+                      }
 
 
 class UPA:
@@ -58,9 +53,7 @@ class UPA:
     :ivar version: The object version.
     """
 
-    def __init__(
-        self, upa: str = None, wsid: int = None, objid: int = None, version: int = None
-    ):
+    def __init__(self, upa: str = None, wsid: int = None, objid: int = None, version: int = None):
         """
         Create the UPA. Requires either the upa parameter or all of the wsid, objid, and version
         parameters. If upa is supplied the other arguments are ignored.
@@ -75,45 +68,39 @@ class UPA:
             self.wsid, self.objid, self.version = self._check_upa(upa)
         else:
             for num, name in (
-                (wsid, "workspace ID"),
-                (objid, "object ID"),
-                (version, "object version"),
-            ):
+                    (wsid, 'workspace ID'),
+                    (objid, 'object ID'),
+                    (version, 'object version')):
                 if not num or num < 1:
-                    raise _IllegalParameterError(f"Illegal {name}: {num}")
+                    raise _IllegalParameterError(f'Illegal {name}: {num}')
             self.wsid = wsid
             self.objid = objid
             self.version = version
 
     def _check_upa(self, upa):
-        upastr = upa.split("/")
+        upastr = upa.split('/')
         if len(upastr) != 3:
-            raise _IllegalParameterError(f"{upa} is not a valid UPA")
-        return (
-            self._get_ws_num(upastr[0], upa),
-            self._get_ws_num(upastr[1], upa),
-            self._get_ws_num(upastr[2], upa),
-        )
+            raise _IllegalParameterError(f'{upa} is not a valid UPA')
+        return (self._get_ws_num(upastr[0], upa),
+                self._get_ws_num(upastr[1], upa),
+                self._get_ws_num(upastr[2], upa))
 
     def _get_ws_num(self, int_: str, upa):
         try:
             i = int(int_)
             if i < 1:
-                raise _IllegalParameterError(f"{upa} is not a valid UPA")
+                raise _IllegalParameterError(f'{upa} is not a valid UPA')
             return i
         except ValueError:
-            raise _IllegalParameterError(f"{upa} is not a valid UPA")
+            raise _IllegalParameterError(f'{upa} is not a valid UPA')
 
     def __str__(self) -> str:
-        return f"{self.wsid}/{self.objid}/{self.version}"
+        return f'{self.wsid}/{self.objid}/{self.version}'
 
     def __eq__(self, other) -> bool:
         if type(self) is type(other):
             return (self.wsid, self.objid, self.version) == (
-                other.wsid,
-                other.objid,
-                other.version,
-            )
+                other.wsid, other.objid, other.version)
         return False
 
     def __hash__(self):
@@ -140,12 +127,12 @@ class DataUnitID:
         :param dataid: The id of the data within the object that this DUID references with a
             maximum of 256 characters. None if the data unit is the entire object.
         """
-        self.upa = _not_falsy(upa, "upa")
-        self.dataid = _check_string(dataid, "dataid", max_len=256, optional=True)
+        self.upa = _not_falsy(upa, 'upa')
+        self.dataid = _check_string(dataid, 'dataid', max_len=256, optional=True)
 
     def __str__(self):
         if self.dataid:
-            return f"{self.upa}:{self.dataid}"
+            return f'{self.upa}:{self.dataid}'
         else:
             return str(self.upa)
 
@@ -172,17 +159,16 @@ class WS:
 
         :param client: An SDK workspace client with administrator read permissions.
         """
-        self._ws = _not_falsy(client, "client")
+        self._ws = _not_falsy(client, 'client')
         # check token is a valid admin token
-        self._ws.administer({"command": "listModRequests"})
+        self._ws.administer({'command': 'listModRequests'})
 
     def has_permission(
-        self,
-        user: Optional[UserID],
-        perm: WorkspaceAccessType,
-        workspace_id: int = None,
-        upa: UPA = None,
-    ):
+            self,
+            user: Optional[UserID],
+            perm: WorkspaceAccessType,
+            workspace_id: int = None,
+            upa: UPA = None):
         """
         Check if a user can access a workspace resource. Exactly one of workspace_id or upa must
         be supplied - if both are supplied workspace_id takes precedence.
@@ -200,57 +186,51 @@ class WS:
         :raises UnauthorizedError: if the user doesn't have the requested permission.
         :raises NoSuchWorkspaceDataError: if the workspace or UPA doesn't exist.
         """
-        _not_falsy(perm, "perm")
+        _not_falsy(perm, 'perm')
         if workspace_id is not None:
             wsid = workspace_id
-            name = "workspace"
+            name = 'workspace'
             target = str(workspace_id)
             upa = None
         elif upa:
             wsid = upa.wsid
-            name = "upa"
+            name = 'upa'
             target = str(upa)
         else:
-            raise ValueError("Either an UPA or a workspace ID must be supplied")
+            raise ValueError('Either an UPA or a workspace ID must be supplied')
         if wsid < 1:
-            raise _IllegalParameterError(f"{wsid} is not a valid workspace ID")
+            raise _IllegalParameterError(f'{wsid} is not a valid workspace ID')
 
         try:
-            p = self._ws.administer(
-                {
-                    "command": "getPermissionsMass",
-                    "params": {"workspaces": [{"id": wsid}]},
-                }
-            )["perms"][0]
+            p = self._ws.administer({'command': 'getPermissionsMass',
+                                     'params': {'workspaces': [{'id': wsid}]}
+                                     }
+                                    )['perms'][0]
         except _ServerError as se:
             # this is pretty ugly, need error codes
 
-            if "No workspace" in se.args[0] or "is deleted" in se.args[0]:
+            if 'No workspace' in se.args[0] or 'is deleted' in se.args[0]:
                 raise _NoSuchWorkspaceDataError(se.args[0]) from se
             else:
                 raise
-        public_access = p.get("*") == "r" and perm == WorkspaceAccessType.READ
+        public_access = p.get('*') == 'r' and perm == WorkspaceAccessType.READ
         has_access = p.get(user.id) in _PERM_TO_PERM_SET[perm] if user else False
 
         # could optimize a bit if NONE and upa but not worth the code complication most likely
         if perm != WorkspaceAccessType.NONE and not has_access and not public_access:
-            u = f"User {user}" if user else "Anonymous users"
-            raise _UnauthorizedError(
-                f"{u} cannot {_PERM_TO_PERM_TEXT[perm]} {name} {target}"
-            )
+            u = f'User {user}' if user else 'Anonymous users'
+            raise _UnauthorizedError(f'{u} cannot {_PERM_TO_PERM_TEXT[perm]} {name} {target}')
         if upa:
             # Allow any server errors to percolate upwards
             # theoretically the workspace could've been deleted between the last call and this
             # one, but that'll just result in a different error and is extremely unlikely to
             # happen, so don't worry about it
-            ret = self._ws.administer(
-                {
-                    "command": "getObjectInfo",
-                    "params": {"objects": [{"ref": str(upa)}], "ignoreErrors": 1},
-                }
-            )
-            if not ret["infos"][0]:
-                raise _NoSuchWorkspaceDataError(f"Object {upa} does not exist")
+            ret = self._ws.administer({'command': 'getObjectInfo',
+                                       'params': {'objects': [{'ref': str(upa)}],
+                                                  'ignoreErrors': 1}
+                                       })
+            if not ret['infos'][0]:
+                raise _NoSuchWorkspaceDataError(f'Object {upa} does not exist')
 
     def get_user_workspaces(self, user: Optional[UserID]) -> List[int]:
         """
@@ -264,19 +244,15 @@ class WS:
         # May also want write / admin / no public ws
         try:
             if user:
-                ids = self._ws.administer(
-                    {
-                        "command": "listWorkspaceIDs",
-                        "user": user.id,
-                        "params": {"perm": "r", "excludeGlobal": 0},
-                    }
-                )
+                ids = self._ws.administer({'command': 'listWorkspaceIDs',
+                                           'user': user.id,
+                                           'params': {'perm': 'r', 'excludeGlobal': 0}})
             else:
-                ids = self._ws.list_workspace_ids({"onlyGlobal": 1})
+                ids = self._ws.list_workspace_ids({'onlyGlobal': 1})
         except _ServerError as se:
             # this is pretty ugly, need error codes
-            if "not a valid user" in se.args[0]:
+            if 'not a valid user' in se.args[0]:
                 raise _NoSuchUserError(se.args[0]) from se
             else:
                 raise
-        return sorted(ids["workspaces"] + ids["pub"])
+        return sorted(ids['workspaces'] + ids['pub'])

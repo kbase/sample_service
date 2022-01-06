@@ -133,9 +133,7 @@ def string(
                 if v and maxlen and len(_cast(str, v)) > maxlen:
                     return {
                         "subkey": str(k),
-                        "message": (
-                            f"Metadata value at key {k} is longer than max length of {maxlen}"
-                        ),
+                        "message": f"Metadata value at key {k} is longer than max length of {maxlen}",
                     }
             return None
 
@@ -155,9 +153,7 @@ def string(
                     if len(_cast(str, v)) > _cast(int, maxlen):
                         return {
                             "subkey": str(k),
-                            "message": (
-                                f"Metadata value at key {k} is longer than max length of {maxlen}"
-                            ),
+                            "message": f"Metadata value at key {k} is longer than max length of {maxlen}",
                         }
             return None
 
@@ -206,9 +202,7 @@ def enum(
                 if d1.get(k) not in allowed:
                     return {
                         "subkey": str(k),
-                        "message": (
-                            f"Metadata value at key {k} is not in the allowed list of values"
-                        ),
+                        "message": f"Metadata value at key {k} is not in the allowed list of values",
                     }
             return None
 
@@ -221,9 +215,7 @@ def enum(
                 if v not in allowed:
                     return {
                         "subkey": str(k),
-                        "message": (
-                            f"Metadata value at key {k} is not in the allowed list of values"
-                        ),
+                        "message": f"Metadata value at key {k} is not in the allowed list of values",
                     }
             return None
 
@@ -523,10 +515,7 @@ def ontology_has_ancestor(
             if ancestor_term not in ancestors:
                 return {
                     "subkey": str(k),
-                    "message": (
-                        f"Metadata value at key {k} does not have "
-                        f"{ontology} ancestor term {ancestor_term}"
-                    ),
+                    "message": f"Metadata value at key {k} does not have {ontology} ancestor term {ancestor_term}",
                 }
         return None
 
