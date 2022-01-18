@@ -1,6 +1,7 @@
 # IDEs and dev tools
 .vscode
 .cspell
+kb-sdk
 
 # Python local usage
 __pycache__
