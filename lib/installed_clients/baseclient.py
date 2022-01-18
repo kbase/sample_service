@@ -174,7 +174,7 @@ class BaseClient(object):
                              verify=not self.trust_all_ssl_certificates)
         ret.encoding = 'utf-8'
         if ret.status_code == 500:
-            if ret.headers.get(_CT) == _AJ:
+            if ret.headers.get(_CT).startswith(_AJ):
                 err = ret.json()
                 if 'error' in err:
                     raise ServerError(**err['error'])
