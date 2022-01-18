@@ -2,6 +2,7 @@
 .vscode
 .cspell
 kb-sdk
+*.py.bak-*
 
 # Python local usage
 __pycache__
