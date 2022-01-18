@@ -60,7 +60,7 @@ def main():
     def create_db():
         return create_test_db(ARANGO_HOST, TEST_DB_NAME, TEST_USER, TEST_PWD)
 
-    db = try_wait(create_db, 60)
+    db = try_wait(create_db, TIMEOUT)
 
     try:
         create_collections(db)
