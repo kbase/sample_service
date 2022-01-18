@@ -1,5 +1,20 @@
+# IDEs and dev tools
+.vscode
+.cspell
+
+# Python local usage
+__pycache__
+
+# Testing
 test/test.cfg
 test_local
-__pycache__
-.vscode
 deploy.cfg
+htmlcov
+cov_profile.lcov
+.coverage*
+
+# A handy place to stash files before deletion 
+_temp
+
+# macOS
+.DS_Store
