@@ -1,2 +1,3 @@
-This directory should contain scripts and files needed to test your module's code.
- 
+# Testing
+
+This directory contains (almost) all testing support.

@@ -1,0 +1,10 @@
+[run]
+include = lib/SampleService/*
+parallel = True
+data_file = .coverage-system
+omit =
+    */__init__.py
+    */SampleServiceServer.py
+    */SampleServiceClient.py
+    */baseclient.py
+    */authclient.py
