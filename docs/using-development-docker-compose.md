@@ -31,7 +31,7 @@ The service images in the docker compose file should match those that are used i
 Generally, the required services are:
 
 - ArangoDB 3.5.1+ with RocksDB as the storage engine
-- Kafa 2.5.0+
+- Kafka 2.5.0+
 - KBase Mock Services
 
 ## Starting the containers
