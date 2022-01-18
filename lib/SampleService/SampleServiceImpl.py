@@ -27,6 +27,7 @@ from SampleService.core.api_translation import (
     acl_delta_from_dict as _acl_delta_from_dict,
     )
 from SampleService.core.acls import AdminPermission as _AdminPermission
+from SampleService.core.errors import MissingParameterError
 from SampleService.core.sample import SampleAddress as _SampleAddress
 from SampleService.core.user import UserID as _UserID
 
@@ -55,8 +56,8 @@ Note that usage of the administration flags will be logged by the service.
     # the latter method is running.
     ######################################### noqa
     VERSION = "0.1.0"
-    GIT_URL = "git@github.com:kbase/sample_service.git"
-    GIT_COMMIT_HASH = "b362ec800344f7c527ace52d0cc0127d006a731c"
+    GIT_URL = "ssh://git@github.com/kbase/sample_service"
+    GIT_COMMIT_HASH = "c4dbf69c73e7e73a00c3b7807a87a95440f588d5"
 
     #BEGIN_CLASS_HEADER
     #END_CLASS_HEADER
@@ -402,7 +403,7 @@ Note that usage of the administration flags will be logged by the service.
         # return variables are: samples
         #BEGIN get_samples
         if not params.get('samples'):
-          raise ValueError(f"")
+          raise MissingParameterError("samples")
         ids_ = []
         for samp_obj in params['samples']:
           id_, ver = _get_sample_address_from_object(samp_obj)
