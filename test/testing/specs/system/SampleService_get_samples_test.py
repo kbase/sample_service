@@ -28,12 +28,16 @@ def test_get_samples_fail_missing_param(sample_service):
         TOKEN2,
         {"id": bad_sample_id, "version": 1, "as_admin": False},
     )
-    assert error["message"] == ("The 'samples' parameter is required")
+    assert error["message"] == (
+        "Sample service error code 30000 Missing input parameter: samples"
+    )
 
 
 def test_get_samples_fail_no_samples_provided(sample_service):
     error = get_samples_assert_error(sample_service["url"], TOKEN2, {"samples": []})
-    assert error["message"] == ("The 'samples' parameter is required")
+    assert error["message"] == (
+        "Sample service error code 30000 Missing input parameter: samples"
+    )
 
 
 def test_create_and_get_samples(sample_service, kafka_host):
