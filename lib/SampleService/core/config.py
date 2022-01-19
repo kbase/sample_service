@@ -106,6 +106,14 @@ def build_samples(config: Dict[str, str]) -> Tuple[Samples, KBaseUserLookup, Lis
         optional=True,
     )
 
+    consistency_checker_enabled = config.get("consistency-checker-enabled") == "true"
+    if consistency_checker_enabled:
+        consistency_checker_interval = int(
+            config.get("consistency-checker-interval", "60")
+        )
+    else:
+        consistency_checker_interval = None
+
     # meta params may have info that shouldn't be logged so don't log any for now.
     # Add code to deal with this later if needed
     print(
@@ -133,6 +141,8 @@ def build_samples(config: Dict[str, str]) -> Tuple[Samples, KBaseUserLookup, Lis
             kafka-bootstrap-servers: {kafka_servers}
             kafka-topic: {kafka_topic}
             metadata-validators-config-url: {metaval_url}
+            consistency-checker-enabled: {consistency_checker_enabled}
+            consistency-checker-interval: {consistency_checker_interval}
     """
     )
 
@@ -154,7 +164,22 @@ def build_samples(config: Dict[str, str]) -> Tuple[Samples, KBaseUserLookup, Lis
         col_data_link,
         col_schema,
     )
-    storage.start_consistency_checker()
+
+    # Conditionally start the database consistency checker.
+    # Note - should be disabled during tests.
+    consistency_checker_enabled = config.get("consistency-checker-enabled") == "true"
+    if consistency_checker_enabled:
+        consistency_checker_interval = int(
+            config.get("consistency-checker-interval", "60")
+        )
+        print(
+            f"Starting consistency checker with interval {consistency_checker_interval}",
+            flush=True,
+        )
+        storage.start_consistency_checker(consistency_checker_interval)
+    else:
+        print("Not starting consistency checker", flush=True)
+
     kafka = (
         _KafkaNotifer(kafka_servers, _cast(str, kafka_topic)) if kafka_servers else None
     )

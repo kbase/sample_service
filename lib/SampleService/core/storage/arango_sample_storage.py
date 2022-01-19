@@ -275,7 +275,8 @@ class ArangoSampleStorage:
         self._check_schema()
         self._deletion_delay = datetime.timedelta(hours=1)  # make configurable?
         self._check_db_updated()
-        self._scheduler = self._build_scheduler()
+        # Scheduler is created if started
+        self._scheduler = None
 
     def _ensure_indexes(self):
         try:
@@ -409,6 +410,8 @@ class ArangoSampleStorage:
         """
         if interval_sec < 1:
             raise ValueError("interval_sec must be > 0")
+        if self._scheduler is None:
+            self._scheduler = self._build_scheduler()
         self._scheduler.reschedule_job(
             _JOB_ID, trigger="interval", seconds=interval_sec
         )
@@ -418,7 +421,8 @@ class ArangoSampleStorage:
         """
         Stop the consistency checker.
         """
-        self._scheduler.pause()
+        if self._scheduler is not None:
+            self._scheduler.pause()
 
     def save_sample(self, sample: SavedSample) -> bool:
         """
