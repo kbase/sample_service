@@ -1,9 +1,6 @@
 version: "3.8"
 
 # This docker-compose is unit testing workflows
-networks:
-  kbase-dev:
-    name: kbase-dev
 services:
   test:
     image: sampleservice:test

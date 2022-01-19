@@ -46,18 +46,6 @@ else
     # development validators, data for loading, etc.
     export PYTHONPATH="$script_dir/../test:$PYTHONPATH"
     echo "[ENTRYPOINT] test mode with Python path: ${PYTHONPATH}"
-    python "${script_dir}/../lib/cli/prepare-arango.py"
-    workers=1
-    log_level=debug
-  elif [ "${1}" = "coverage" ] ; then
-    # Python path must include the test directory in order for the test validators
-    # to be loadable.
-    # Test directory is included in the python path so that we can use
-    # test validators defined therein. 
-    # TODO: we may want to establish a dev directory in which to place
-    # development validators, data for loading, etc.
-    export PYTHONPATH="$script_dir/../test:$PYTHONPATH"
-    echo "[ENTRYPOINT] test mode with Python path: ${PYTHONPATH}"
     export COVERAGE_PROCESS_START="test/coveragerc-system"
     python "${script_dir}/../lib/cli/prepare-arango.py"
     workers=1

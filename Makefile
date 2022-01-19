@@ -74,6 +74,8 @@ host-remove-dev-server:
 
 # Running tests
 
+# Startup, teardown
+
 host-test-begin: 
 	@echo "Beginning tests..."
 	docker compose -f test/docker-compose-test.yml run --rm test test-begin
@@ -82,34 +84,20 @@ host-test-end:
 	@echo "Ending tests..."
 	docker compose -f test/docker-compose-test.yml run --rm test test-end
 
+host-test-stop-services:
+	@echo "Stopping all test services"
+	MOCK_DATASET_PATH=${PWD}/test/data/mock_services docker compose -f test/docker-compose.yml stop
+	MOCK_DATASET_PATH=${PWD}/test/data/mock_services docker compose -f test/docker-compose.yml rm -f
+	@echo "Test services stopped"
+
+#
+# Run test groups: unit, integration, system
+#
+
 host-test-unit: 
 	@echo "Running unit tests..."
 	docker compose -f test/docker-compose-test.yml run --rm test test-unit
 	@echo "Unit tests done"
-
-
-
-#
-# docker-compose-test.yml adds the testing container
-# docker-compose-test-integration.yml adds support for integrating with the main docker compose services
-
-host-test-integration-stop:
-	@echo "Stopping integration test stack"
-	MOCK_DATASET_PATH=${PWD}/test/data/mock_services docker compose -f test/docker-compose.yml stop
-	MOCK_DATASET_PATH=${PWD}/test/data/mock_services docker compose -f test/docker-compose.yml rm -f
-	@echo "Integration test stack stopped"
-
-host-test-stop-sampleservice:
-	@echo "Stopping sampleservice container"
-	MOCK_DATASET_PATH=${PWD}/test/data/mock_services docker compose -f test/docker-compose.yml stop sampleservice
-	MOCK_DATASET_PATH=${PWD}/test/data/mock_services docker compose -f test/docker-compose.yml rm -f sampleservice
-	@echo "sampleservice stopped"
-
-host-test-stop-arangodb:
-	@echo "Stopping arango container"
-	MOCK_DATASET_PATH=${PWD}/test/data/mock_services docker compose -f test/docker-compose.yml stop arangodb
-	MOCK_DATASET_PATH=${PWD}/test/data/mock_services docker compose -f test/docker-compose.yml rm -f arangodb
-	@echo "arango stopped"
 
 host-test-integration:
 	@echo "Running integration tests..."
@@ -117,7 +105,7 @@ host-test-integration:
 	docker compose \
 		-f test/docker-compose.yml \
 		-f test/docker-compose-test.yml \
-		-f test/docker-compose-test-integration.yml \
+		-f test/docker-compose-test-with-services.yml \
 		run --rm test test-integration
 	@echo "Integration tests done."
 
@@ -127,18 +115,25 @@ host-test-system:
 	docker compose \
 		-f test/docker-compose.yml \
 		-f test/docker-compose-test.yml \
-		-f test/docker-compose-test-system.yml \
+		-f test/docker-compose-test-with-services.yml \
 		run --rm test test-system
 	@echo "System tests done."
 
 
-# Note need to stop the sampleservice between integration and system tests since we need to instrument the sample service just for system tests
-host-test-all: host-test-begin host-test-unit host-test-integration host-test-stop-sampleservice host-test-stop-arangodb host-test-system host-test-integration-stop host-test-end
+#
+# Bundled tasks. Each one of these will handle test environment startup, teardown, and generation of 
+# coverage reports
+#
+host-test-all: host-test-begin host-test-unit host-test-integration host-test-system host-test-stop-services host-test-end
 
 host-test-unit-all: host-test-begin host-test-unit host-test-end
 
+host-test-integration-all: host-test-begin host-test-integration host-test-stop-services host-test-end
+
+host-test-system-all: host-test-begin host-test-system host-test-stop-services host-test-end
+
 ##
-## Testing
+## Testing within container
 ##
 
 test-begin:
