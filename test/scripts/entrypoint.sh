@@ -42,6 +42,7 @@ elif [ "${1}" = "test-system" ] ; then
   # to be loadable.
   export PYTHONPATH="$script_dir/..:$PYTHONPATH"
   echo "[ENTRYPOINT-TESTING] unit-test mode with Python path: ${PYTHONPATH}"
+  # Note that this is the internal address, so always port 5000.
   SAMPLE_SERVICE_URL=http://sampleservice:5000 make wait-for-sample-service
   make test-system
 else
