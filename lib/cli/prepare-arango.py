@@ -66,6 +66,8 @@ def main():
 
     db = try_wait(create_db, TIMEOUT)
 
+    log("Arango ready!")
+
     try:
         create_collections(db)
     except Exception as ex:
