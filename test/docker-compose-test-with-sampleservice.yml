@@ -4,6 +4,4 @@ version: "3.8"
 services:
   test:
     depends_on:
-      - arangodb
-      - kafka
-      - mockservices
+      - sampleservice

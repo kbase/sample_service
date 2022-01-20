@@ -1,6 +1,6 @@
 version: "3.8"
-
-# This docker-compose is for testing and development workflows, not for running in production.
+# This docker-compose is for testing workflows, not for running in production.
+# It is invoked by integratino and system tests
 services:
   sampleservice:
     image: sampleservice:test
@@ -54,7 +54,8 @@ services:
       #
       - consistency_checker_enabled=false
       - consistency_checker_interval=60
-    command: [ 'test' ]
+    entrypoint: [ './test/scripts/entrypoint-service.sh' ]
+    command: [ 'noop' ]
 
   # Arangodb server in cluster mode
   arangodb:
@@ -65,7 +66,6 @@ services:
     #      - "${PWD}/logs/arangodb/:/var/log/arangodb3"
     environment:
       - ARANGO_NO_AUTH=1
-
     command: sh -c "arangodb --starter.local"
 
   # Kafka setup, see https://hub.docker.com/r/bitnami/kafka
@@ -99,4 +99,13 @@ services:
       - "3333:3333"
     volumes:
       # The container expects all mock data to be in /data
-      - ${MOCK_DATASET_PATH}:/data
+      - ${PWD}/test/data/mock_services:/data
+
+  test:
+    image: sampleservice:test
+    build:
+      context: ..
+    volumes:
+      - "${PWD}:/kb/module"
+    entrypoint: [ './test/scripts/entrypoint-test.sh' ]
+    command: [ 'noop' ]

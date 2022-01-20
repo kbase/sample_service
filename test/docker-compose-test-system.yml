@@ -1,0 +1,7 @@
+version: "3.8"
+# Provides coverage command to invoke the collection of coverage.
+services:
+  sampleservice:
+    command: coverage
+
+  
