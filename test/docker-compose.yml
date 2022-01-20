@@ -1,6 +1,9 @@
 version: "3.8"
 # This docker-compose is for testing workflows, not for running in production.
-# It is invoked by integratino and system tests
+# It is invoked by integration and system tests
+networks:
+  kbase-dev:
+    name: kbase-dev
 services:
   sampleservice:
     image: sampleservice:test
@@ -10,6 +13,8 @@ services:
       - arangodb
       - kafka
       - mockservices
+    networks:
+      - kbase-dev
     ports:
       # Use 5555 for host port, as macOS Monterey uses it by default for airplay.
       # (Don't really need to use the port, but it can be handy to poke at it from the host)
@@ -60,6 +65,8 @@ services:
   # Arangodb server in cluster mode
   arangodb:
     image: arangodb:3.5.1
+    networks:
+      - kbase-dev
     ports:
       - "127.0.0.1:8529:8529"
     #    volumes:
@@ -71,6 +78,8 @@ services:
   # Kafka setup, see https://hub.docker.com/r/bitnami/kafka
   zookeeper:
     image: bitnami/zookeeper:latest
+    networks:
+      - kbase-dev
     ports:
       - "2181:2181"
     environment:
@@ -79,6 +88,8 @@ services:
 
   kafka:
     image: "bitnami/kafka:2.6.0"
+    networks:
+      - kbase-dev
     depends_on:
       - zookeeper
     ports:
@@ -95,6 +106,8 @@ services:
 
   mockservices:
     image: ghcr.io/eapearson/kbase-mock-services:feature-add-unit-testing
+    networks:
+      - kbase-dev
     ports:
       - "3333:3333"
     volumes:
@@ -103,6 +116,8 @@ services:
 
   test:
     image: sampleservice:test
+    networks:
+      - kbase-dev
     build:
       context: ..
     volumes:
