@@ -65,21 +65,28 @@ jobs:
       - name: Run unit tests
         run: make host-test-unit
 
+      # Start services and set up arango
+      - name: Run services and prep arango
+        run:  make host-test-prepare-arango
+
       # Run integration tests
       - name: Run integration tests
-        run:  MOCK_DATASET_PATH=${PWD}/test/data/mock_services make host-test-integration
+        run:  make host-test-integration
 
       # Run system tests
       - name: Run system tests
-        run:  MOCK_DATASET_PATH=${PWD}/test/data/mock_services make host-test-system
+        run:  make host-test-system
 
-      # Finish up tests (lcov)
+      # Clean up after tests.
+      # This also forces the coverage data to be emitted from the
+      # sampleservice into files.
+      - name: Stop and remove all test containers system tests
+        run:  make host-test-stop
+
+      # Finish up tests (htmlcov, lcov)
       - name: Run test end tasks
         run: make host-test-end
 
-      # Clean up after tests.
-      - name: Stop and remove all test containers system tests
-        run:  MOCK_DATASET_PATH=${PWD}/test/data/mock_services make host-test-integration-stop
 
       - name: Send to Codecov
         uses: codecov/codecov-action@v2
