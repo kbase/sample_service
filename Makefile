@@ -85,13 +85,6 @@ host-test-end:
 	@echo "Ending tests..."
 	docker compose -f test/docker-compose.yml run --rm test end
 
-host-test-prepare-arango:
-	@echo "Preparing arango..."
-	docker compose \
-		-f test/docker-compose.yml \
-		-f test/docker-compose-test-with-services.yml \
-		run --rm test prepare-arango
-
 host-test-stop:
 	@echo "Stopping all test services"
 	docker compose -f test/docker-compose.yml stop
@@ -111,7 +104,7 @@ host-test-integration:
 	@echo "Running integration tests..."
 	docker compose \
 		-f test/docker-compose.yml \
-		-f test/docker-compose-test-with-services.yml \
+		-f test/docker-compose-test-with-sampleservice.yml \
 		run --rm test integration
 	@echo "Integration tests done."
 
@@ -129,13 +122,13 @@ host-test-system:
 # Bundled tasks. Each one of these will handle test environment startup, teardown, and generation of 
 # coverage reports
 #
-host-test-all: host-test-begin host-test-unit host-test-prepare-arango host-test-integration host-test-system host-test-stop host-test-end
+host-test-all: host-test-begin host-test-unit host-test-integration host-test-stop host-test-system host-test-stop host-test-end
 
 host-test-unit-all: host-test-begin host-test-unit host-test-end
 
-host-test-integration-all: host-test-begin host-test-prepare-arango host-test-integration host-test-stop host-test-end
+host-test-integration-all: host-test-begin host-test-integration host-test-stop host-test-end
 
-host-test-system-all: host-test-begin host-test-prepare-arango host-test-system host-test-stop host-test-end
+host-test-system-all: host-test-begin host-test-system host-test-stop host-test-end
 
 ##
 ## Testing within container
