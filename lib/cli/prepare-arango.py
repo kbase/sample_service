@@ -19,6 +19,10 @@ TEST_PWD = "test123"
 TIMEOUT = 60
 
 
+def log(message):
+    print(f"[prepare-arango] {message}", flush=True)
+
+
 def create_collections(db):
     db.create_collection(TEST_COL_SAMPLE)
     db.create_collection(TEST_COL_VERSION)
@@ -45,8 +49,8 @@ def try_wait(fun, timeout):
         try:
             return fun()
         except Exception as ex:
-            print("not ready, retrying")
-            print(ex)
+            log("not ready, retrying")
+            log(str(ex))
             time.sleep(1)
     raise Exception(
         f"Arango not ready after {datetime.datetime.now().timestamp() - start}s"
@@ -54,8 +58,8 @@ def try_wait(fun, timeout):
 
 
 def main():
-    print("[prepare-arango] Preparing ArangoDB...")
-    print("[prepare-arango] Waiting for ArangoDB to start...")
+    log("Preparing ArangoDB...")
+    log("Waiting for ArangoDB to start...")
 
     def create_db():
         return create_test_db(ARANGO_HOST, TEST_DB_NAME, TEST_USER, TEST_PWD)
@@ -65,9 +69,9 @@ def main():
     try:
         create_collections(db)
     except Exception as ex:
-        print("[prepare-arango] collections: I guess not :(", ex)
+        log(f"Error: {str(ex)}")
 
-    print("[prepare-arango] DONE!")
+    log("DONE!")
 
 
 if __name__ == "__main__":
