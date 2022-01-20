@@ -57,36 +57,9 @@ jobs:
 
       # TODO: use tests as sub-workflow
 
-      # Prepare for tests
-      - name: Run test begin tasks
-        run: make host-test-begin
-
-      # Run unit tests
-      - name: Run unit tests
-        run: make host-test-unit
-
-      # Start services and set up arango
-      - name: Run services and prep arango
-        run:  make host-test-prepare-arango
-
-      # Run integration tests
-      - name: Run integration tests
-        run:  make host-test-integration
-
-      # Run system tests
-      - name: Run system tests
-        run:  make host-test-system
-
-      # Clean up after tests.
-      # This also forces the coverage data to be emitted from the
-      # sampleservice into files.
-      - name: Stop and remove all test containers system tests
-        run:  make host-test-stop
-
-      # Finish up tests (htmlcov, lcov)
-      - name: Run test end tasks
-        run: make host-test-end
-
+      # Run all tests
+      - name: Run unit, integration, and system tests
+        run: make host-test-all
 
       - name: Send to Codecov
         uses: codecov/codecov-action@v2
