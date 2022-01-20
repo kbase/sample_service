@@ -21,9 +21,9 @@ export PYTHONPATH="$script_dir/../../test:$script_dir/../../lib:$PYTHONPATH"
 # Populates arangodb with collections, waits for it to be ready
 #
 
-# echo "[ENTRYPOINT] Preparing arango..." 
-# python "${script_dir}/../../lib/cli/prepare-arango.py"
-# echo "[ENTRYPOINT] arango ready"
+echo "[ENTRYPOINT] Preparing arango..." 
+python "${script_dir}/../../lib/cli/prepare-arango.py"
+echo "[ENTRYPOINT] arango ready"
 
 #
 # Parameters for gunicorn

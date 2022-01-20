@@ -35,6 +35,9 @@ elif [ "${1}" = "integration" ] ; then
   # to be loadable.
   export PYTHONPATH="$script_dir/..:$PYTHONPATH"
   echo "[ENTRYPOINT-TEST] integration test mode with Python path: ${PYTHONPATH}"
+  # Note that this is the internal address, so always port 5000.
+  # And that the sample service itself will be waiting for arango to be ready.
+  SAMPLE_SERVICE_URL=http://sampleservice:5000 make wait-for-sample-service
   make test-integration
 elif [ "${1}" = "system" ] ; then
   # Python path must include the test directory in order for the test validators
@@ -44,10 +47,6 @@ elif [ "${1}" = "system" ] ; then
   # Note that this is the internal address, so always port 5000.
   SAMPLE_SERVICE_URL=http://sampleservice:5000 make wait-for-sample-service
   make test-system
-elif [ "${1}" = "prepare-arango" ] ; then
-  echo "[ENTRYPOINT-TEST] Preparing arango..." 
-  python "${script_dir}/../../lib/cli/prepare-arango.py"
-  echo "[ENTRYPOINT-TEST] arango ready"
 else
   echo "[ENTRYPOINT-TEST] Error! Unknown entrypoint option: ${1}"
   exit 1
