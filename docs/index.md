@@ -6,9 +6,7 @@ The Sample Service stores information regarding experimental samples taken from 
 It supports Access Control Lists for each sample, subsample trees, and modular metadata
 validation.
 
-The SDK API specification for the service is contained in the `SampleService.spec` file. An indexed
-interactive version is
-[also available](http://htmlpreview.github.io/?https://github.com/kbaseIncubator/sample_service/blob/master/SampleService.html).
+The SDK API specification for the service is contained in the `SampleService.spec` file. An indexed interactive version is [also available](http://htmlpreview.github.io/?https://github.com/kbaseIncubator/sample_service/blob/master/SampleService.html).
 
 ## Contents
 
