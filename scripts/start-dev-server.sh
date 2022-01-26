@@ -1,8 +1,8 @@
 
 # See if port is in use.
-USING_PORT=$(lsof -i ":${DS_PORT:-5000}")
+USING_PORT=$(lsof -i ":${DC_PORT:-5000}")
 if [ -n "$USING_PORT" ]; then
-  echo "Another application is using port '${DS_PORT}' (see below)"
+  echo "Another application is using port '${DC_PORT:-5000}' (see below)"
   echo ""
   echo "${USING_PORT}"
   echo ""
@@ -11,4 +11,8 @@ if [ -n "$USING_PORT" ]; then
   exit 1
 fi
 
-docker compose -f dev/docker-compose.yml up
+if [ "$DC_DETACH" == "yes" ]; then
+  docker compose -f dev/docker-compose.yml up --detach
+else
+  docker compose -f dev/docker-compose.yml up
+fi

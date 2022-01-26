@@ -2,14 +2,15 @@
 .vscode
 .cspell
 kb-sdk
-*.py.bak-*
-
+lib/SampleService/SampleServiceImpl.py.bak*
 # Python local usage
 __pycache__
 
 # Testing
 test/test.cfg
 test_local
+.coverage
+test/test_temp/
 deploy.cfg
 htmlcov
 cov_profile.lcov
@@ -20,3 +21,4 @@ _temp
 
 # macOS
 .DS_Store
+

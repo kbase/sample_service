@@ -5,6 +5,10 @@
 * Add docker-compose workflow (SAM-142)
 * Refactor tests to adapt to docker-compose workflow (SAM-96)
 
+## 0.1.0-2alpha
+
+* Add propagate_data_links method - propagates data links from a previous sample to the current (latest) version
+
 ## 0.1.0
 
 * To fix temperature unit conversion check which breaks for celsius and (gasp) Fahrenheit,
