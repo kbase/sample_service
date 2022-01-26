@@ -5,7 +5,6 @@ import copy
 import uuid
 
 from testing.shared.common import (
-    VER,
     assert_acl_contents,
     assert_create_sample,
     assert_error_rpc_call,
@@ -15,7 +14,6 @@ from testing.shared.common import (
     create_sample_assert_result,
     get_sample_assert_result,
     replace_acls,
-    rpc_call_result,
     sample_params_to_sample,
     update_acls,
 )
@@ -36,17 +34,6 @@ from testing.shared.test_constants import (
     USER_NO_TOKEN2,
     USER_NO_TOKEN3,
 )
-from testing.shared.test_utils import assert_ms_epoch_close_to_now
-
-
-def test_status(sample_service):
-    status = rpc_call_result(sample_service["url"], None, "status", [])
-
-    assert_ms_epoch_close_to_now(status["servertime"])
-    assert status["state"] == "OK"
-    assert status["message"] == ""
-    assert status["version"] == VER
-    # ignore git url and hash, can change
 
 
 def test_get_and_replace_acls(sample_service, kafka_host):

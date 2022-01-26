@@ -34,7 +34,7 @@ from testing.shared.test_constants import (
 )
 from testing.shared.test_utils import assert_ms_epoch_close_to_now
 
-VER = "0.1.0"
+VER = "0.1.0-2alpha"
 
 
 def replace_acls(url, sample_id, token, acls, as_admin=0, debug=False):
@@ -252,8 +252,8 @@ def _request_fail(url, method, token, params, expected):
 #     return sample
 
 
-def create_link(url, token, params, expected_user, print_resp=False):
-    result = rpc_call_result(url, token, "create_data_link", [params])
+def create_link(url, token, params, expected_user, debug=False):
+    result = rpc_call_result(url, token, "create_data_link", [params], debug)
     link = result["new_link"]
     link_id = link["linkid"]
     uuid.UUID(link_id)  # check the ID is a valid UUID
