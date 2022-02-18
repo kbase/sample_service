@@ -58,15 +58,8 @@ jobs:
       # TODO: use tests as sub-workflow
 
       # Run tests
-      - name: Run unit tests
-        run: make host-test-unit-all
-
-      - name: Run integration tests
-        run: make host-test-integration-all
-
-      # Run system tests
-      - name: Run system tests
-        run: make host-test-system-all
+      - name: Run all tests
+        run: make host-test-all
 
       - name: Send to Codecov
         uses: codecov/codecov-action@v2
