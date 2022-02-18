@@ -34,7 +34,7 @@ from testing.shared.test_constants import (
 )
 from testing.shared.test_utils import assert_ms_epoch_close_to_now
 
-VER = "0.1.0-2alpha"
+VER = "0.2.1"
 
 
 def replace_acls(url, sample_id, token, acls, as_admin=0, debug=False):
@@ -154,7 +154,7 @@ def _validate_sample_as_admin(url, as_user, get_token, expected_user):
 #     assert ret.json()['error']['message'] == expected
 
 
-def _get_current_epochmillis():
+def get_current_epochmillis():
     return round(datetime.datetime.now(tz=datetime.timezone.utc).timestamp() * 1000)
 
 
@@ -476,6 +476,17 @@ def make_error(error):
 #
 
 
+def create_duplicate_samples(url, token, sample, sample_count, debug=False):
+    sample_ids = []
+    for i in range(0, sample_count):
+        result = rpc_call_result(
+            url, token, "create_sample", [{"sample": sample}], debug
+        )
+        assert result["version"] == 1
+        sample_ids.append(result["id"])
+    return sample_ids
+
+
 def create_sample(url, token, sample, expected_version=1, debug=False):
     result = rpc_call_result(url, token, "create_sample", [{"sample": sample}], debug)
     assert result["version"] == expected_version
@@ -613,12 +624,20 @@ def update_acls_fail(url, token, params, expected):
     return assert_error_rpc_call(url, token, "update_sample_acls", [params], expected)
 
 
-def update_acls(url, token, params):
-    return assert_result_rpc_call(url, token, "update_sample_acls", [params], None)
+def update_acls(url, token, params, debug=False):
+    return assert_result_rpc_call(
+        url, token, "update_sample_acls", [params], None, debug
+    )
 
 
-def get_current_epochmillis():
-    return round(datetime.datetime.now(tz=datetime.timezone.utc).timestamp() * 1000)
+def update_samples_acls_fail(url, token, params, expected_message):
+    return assert_error_rpc_call(
+        url, token, "update_samples_acls", [params], expected_message
+    )
+
+
+def update_samples_acls(url, token, params):
+    return assert_result_rpc_call(url, token, "update_samples_acls", [params], None)
 
 
 def make_expected_sample(case, sample_id, user, version=1):
@@ -658,3 +677,15 @@ def now_fun(now=None):
 
 def sorted_dict(d):
     return dict(sorted(d.items()))
+
+
+def get_links_from_sample_set_assert_error(
+    url, token, params, expected_message=None, debug=False
+):
+    sample_service = ServiceClient("SampleService", url=url, token=token)
+    error = sample_service.call_assert_error(
+        "get_data_links_from_sample_set", params, debug=debug
+    )
+    if expected_message is not None:
+        assert expected_message == error["message"]
+    return error

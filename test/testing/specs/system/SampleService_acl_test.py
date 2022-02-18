@@ -10,12 +10,16 @@ from testing.shared.common import (
     assert_error_rpc_call,
     check_kafka_messages,
     clear_kafka_messages,
+    create_duplicate_samples,
     create_generic_sample,
     create_sample_assert_result,
     get_sample_assert_result,
     replace_acls,
+    rpc_call_result,
     sample_params_to_sample,
     update_acls,
+    update_samples_acls,
+    update_samples_acls_fail,
 )
 from testing.shared.service_client import ServiceClient
 from testing.shared.test_cases import CASE_01
@@ -654,4 +658,115 @@ def test_update_acls_fail_owner_in_remove_acl(sample_service):
             "Sample service error code 20000 Unauthorized: "
             f"ACLs for the sample owner {USER1} may not be modified by a delta update."
         ),
+    )
+
+
+#
+# NEW TESTS TO FIX
+#
+
+
+# def _update_samples_acls(url, token, params, print_resp=False):
+#     resp = requests.post(
+#         url,
+#         headers=get_authorized_headers(token),
+#         json={
+#             "method": "SampleService.update_samples_acls",
+#             "version": "1.1",
+#             "id": "1729",
+#             "params": [params],
+#         },
+#     )
+#     if print_resp:
+#         print(resp.text)
+#     return resp
+
+
+def test_update_acls_many(sample_service):
+    """
+    Uses the singular form "update_sample_acls" multiple times
+    to update each sample.
+    """
+    # create samples
+    n_samples = 2  # 1000
+    ids = create_duplicate_samples(
+        sample_service["url"], TOKEN1, CASE_01["sample"], n_samples, debug=True
+    )
+    for id_ in ids:
+        update_acls(
+            sample_service["url"],
+            TOKEN1,
+            {
+                "id": str(id_),
+                "admin": [],
+                "write": [],
+                "read": [USER2],
+                "remove": [],
+                "public_read": 1,
+                "as_admin": 0,
+            },
+        )
+
+
+def test_update_acls_many_bulk(sample_service):
+    """
+    Uses the plural form "update_samples_acls" a single time
+    to update all samples sample.
+    """
+    # create samples
+    n_samples = 2
+    sample_ids = create_duplicate_samples(
+        sample_service["url"], TOKEN1, CASE_01["sample"], n_samples
+    )
+    update_samples_acls(
+        sample_service["url"],
+        TOKEN1,
+        {
+            "ids": sample_ids,
+            "admin": [],
+            "write": [],
+            "read": [USER2],
+            "remove": [],
+            "public_read": 1,
+            "as_admin": 0,
+        },
+    )
+
+    for sample_id in sample_ids:
+        acl = rpc_call_result(
+            sample_service["url"],
+            TOKEN1,
+            "get_sample_acls",
+            [{"id": sample_id}],
+            debug=True,
+        )
+        assert acl["owner"] == USER1
+        assert acl["admin"] == []
+        assert acl["write"] == []
+        assert acl["read"] == [USER2]
+        assert acl["public_read"] == 1
+
+    # TODO: should assert something about the sample acls ...
+    # otherwise this test just proves that linking these samples
+    # didn't throw an error...
+
+
+def test_update_acls_many_bulk_fail(sample_service):
+    sample_bad_id = str(uuid.UUID("0" * 32))
+    expected_error_message = (
+        f"Sample service error code 50010 No such sample: {sample_bad_id}"
+    )
+    update_samples_acls_fail(
+        sample_service["url"],
+        TOKEN1,
+        {
+            "ids": [sample_bad_id],
+            "admin": [],
+            "write": [],
+            "read": [USER2],
+            "remove": [],
+            "public_read": 1,
+            "as_admin": 0,
+        },
+        expected_error_message,
     )
