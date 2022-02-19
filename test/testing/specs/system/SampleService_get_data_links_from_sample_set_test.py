@@ -92,11 +92,13 @@ def test_get_links_from_sample_set(sample_service):
     # links should be fetched by a single query, and will probably
     # be paged, etc., so per-link metrics won't be as meaningful other
     # than in that context.
-    expected_maximum_time_per_link = 20  # ms
-    expected_maximum_elapsed_time = (
-        sample_count * expected_maximum_time_per_link
-    ) / 1000
-    assert plural_elapsed < expected_maximum_elapsed_time
+    # DISABLED: is not deterministic enough, can fail randomly if the
+    # system is under load.
+    # expected_maximum_time_per_link = 20  # ms
+    # expected_maximum_elapsed_time = (
+    #     sample_count * expected_maximum_time_per_link
+    # ) / 1000
+    # assert plural_elapsed < expected_maximum_elapsed_time
 
 
 def test_get_links_from_sample_set_fail(sample_service):
