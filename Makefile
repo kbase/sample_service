@@ -26,7 +26,7 @@ INTEGRATION_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/testing/specs/integration/$(
 SYSTEM_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/testing/specs/system/$(TEST_CONFIG_FILE)
 UNIT_TEST_CONFIG=$(MAKEFILE_DIR)/$(TEST_DIR)/testing/specs/unit/$(TEST_CONFIG_FILE)
 
-.PHONY: test
+.PHONY: test 
 
 default: compile
 
@@ -91,6 +91,12 @@ host-test-stop:
 	docker compose -f test/docker-compose.yml rm -f
 	@echo "Test services stopped"
 
+host-test-stop2:
+	@echo "Stopping all test services"
+	docker compose -f test/docker-compose.yml stop
+	docker compose -f test/docker-compose.yml rm -f
+	@echo "Test services stopped"
+
 #
 # Run test groups: unit, integration, system
 #
@@ -122,7 +128,7 @@ host-test-system:
 # Bundled tasks. Each one of these will handle test environment startup, teardown, and generation of 
 # coverage reports
 #
-host-test-all: host-test-begin host-test-unit host-test-integration host-test-stop host-test-system host-test-stop host-test-end
+host-test-all: host-test-begin host-test-unit host-test-integration host-test-stop host-test-system host-test-stop2 host-test-end
 
 host-test-unit-all: host-test-begin host-test-unit host-test-end
 
@@ -150,7 +156,7 @@ test-end:
 wait-for-sample-service:
 	@echo "Waiting for SampleService to be available"
 	@[ "${SAMPLE_SERVICE_URL}" ] || (echo "! Environment variable SAMPLE_SERVICE_URL must be set"; exit 1)
-	PYTHONPATH=$(TEST_PYPATH) python -c "from testing.shared.wait_for import wait_for_sample_service; wait_for_sample_service('$(SAMPLE_SERVICE_URL)', 60, 1)"
+	PYTHONPATH=$(TEST_PYPATH) python -c "from testing.shared.wait_for import wait_for_sample_service; wait_for_sample_service('$(SAMPLE_SERVICE_URL)', 60, 1) or sys.exit(1)"
 
 test-integration:
 	@echo "Running integration tests (pytest) in $(INTEGRATION_TEST_SPEC)"
@@ -161,7 +167,7 @@ test-integration:
 
 # Note that coverage is through the sampleservice container
 test-system:
-	@echo "Running service tests (pytest) in $(SYSTEM_TEST_SPEC)"
+	@echo "Running system tests (pytest) in $(SYSTEM_TEST_SPEC)"
 	PYTHONPATH=$(TEST_PYPATH) SAMPLESERV_TEST_FILE=$(SYSTEM_TEST_CONFIG) \
 		pytest --verbose $(SYSTEM_TEST_SPEC)
 
