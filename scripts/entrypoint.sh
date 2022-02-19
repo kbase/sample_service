@@ -23,7 +23,9 @@ if [ "${1}" = "bash" ] ; then
   bash
 else
   if [ $# -eq 0 ] ; then
+    # TODO: this should be configurable
     workers=17
+    # TODO: this should be configurable
     log_level=info
   elif [ "${1}" = "develop" ] ; then
     # Python path must include the test directory in order for the test validators

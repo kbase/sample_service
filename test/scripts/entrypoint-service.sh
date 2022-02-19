@@ -20,7 +20,6 @@ export PYTHONPATH="$script_dir/../../test:$script_dir/../../lib:$PYTHONPATH"
 #
 # Populates arangodb with collections, waits for it to be ready
 #
-
 echo "[ENTRYPOINT] Preparing arango..." 
 python "${script_dir}/../../lib/cli/prepare-arango.py"
 echo "[ENTRYPOINT] arango ready"
@@ -36,10 +35,12 @@ log_level=debug
 #
 if [ "${1}" = "coverage" ] ; then
   export COVERAGE_PROCESS_START="test/coveragerc-system"
-  echo "[ENTRYPOINT] Coverage option provided; COVERAGE_PROCESS_START is '${COVERAGE_PROCESS_START}'"
+  echo "[ENTRYPOINT-SERVICE] Coverage option provided; COVERAGE_PROCESS_START is '${COVERAGE_PROCESS_START}'"
+else
+  echo "[ENTRYPOINT-SERVICE] Coverage option not provided; coverage will be not be collected for the service"
 fi
 
-echo "[ENTRYPOINT] Starting gunicorn with Python path: ${PYTHONPATH}"
+echo "[ENTRYPOINT-SERVICE] Starting gunicorn with Python path: ${PYTHONPATH}"
 exec gunicorn --worker-class gevent \
     --timeout 30 \
     --reload \
