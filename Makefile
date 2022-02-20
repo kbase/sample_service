@@ -103,22 +103,22 @@ host-test-stop2:
 
 host-test-unit: 
 	@echo "Running unit tests..."
-	docker compose -f test/docker-compose.yml run --rm test unit
+	docker compose -f test/docker-compose-test.yml run --rm test unit
 	@echo "Unit tests done"
 
 host-test-integration:
 	@echo "Running integration tests..."
 	docker compose \
-		-f test/docker-compose.yml \
-		-f test/docker-compose-test-with-sampleservice.yml \
+		-f test/docker-compose-test.yml \
+		-f test/docker-compose-test-with-services.yml \
 		run --rm test integration
 	@echo "Integration tests done."
 
 host-test-system:
 	@echo "Running system tests..."
 	docker compose \
-		-f test/docker-compose.yml \
-		-f test/docker-compose-test-with-sampleservice.yml \
+		-f test/docker-compose-test.yml \
+		-f test/docker-compose-test-with-services.yml \
 		-f test/docker-compose-test-system.yml \
 		run --rm test system
 	@echo "System tests done."

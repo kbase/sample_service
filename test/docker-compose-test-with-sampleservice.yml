@@ -1,7 +1,0 @@
-version: "3.8"
-# Links the test container to sampleservice, ensuring that it gets started.
-# Used for integration and system tests.
-services:
-  test:
-    depends_on:
-      - sampleservice

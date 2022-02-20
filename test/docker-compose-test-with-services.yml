@@ -113,14 +113,6 @@ services:
     volumes:
       # The container expects all mock data to be in /data
       - ${PWD}/test/data/mock_services:/data
-
   test:
-    image: sampleservice:test
-    networks:
-      - kbase-dev
-    build:
-      context: ..
-    volumes:
-      - "${PWD}:/kb/module"
-    entrypoint: [ './test/scripts/entrypoint-test.sh' ]
-    command: [ 'noop' ]
+    depends_on:
+      - sampleservice
