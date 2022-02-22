@@ -1,0 +1,30 @@
+@startuml Unit Test Sequence
+
+title Unit Testing
+
+actor Developer as developer
+boundary "Host Machine" as host 
+control make as make
+collections Coverage as coverage
+collections Source as source
+boundary Docker as docker
+control TestContainer as testContainer
+
+' These are more relations, but in terms of process they are
+' part of the system process which makes these resources available
+host -> make : Hosts
+host -> coverage: Hosts
+testContainer -> coverage: Mounts
+docker -> testContainer: Hosts
+
+' Actual test process
+developer -> make : Invoke test runner
+make -> testContainer: Begin tests
+testContainer -> coverage: Clean
+make -> testContainer: Run unit tests
+testContainer -> coverage: Generates data
+make -> testContainer: End tests
+testContainer -> coverage: Generates reports
+
+
+@enduml

@@ -1,0 +1,31 @@
+@startuml test-running
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title "System Overview - Running Unit Tests"
+
+Person(developer, "Developer")
+
+System_Boundary(host, "Host", "Developer host machine") {
+    Container(source, "Source Code", "source code on host")
+    Container(make, "Make", "Runs test tasks")
+    Container(coverage, "Coverage", "html, lcov")
+}
+
+System_Boundary(docker, "Docker") {
+    Container(test, "Sample Service Container", "Runs unit tests against code")
+}
+
+
+Rel(developer, make, "Run Test Command", "make host-test-unit-all")
+
+Rel(make, test, "test-begin")
+Rel(make, test, "test-unit")
+Rel(make, test, "test-end")
+
+Rel_R(test, coverage, "clears")
+Rel_R(test, coverage, "generates")
+Rel(source, test, "volume mounted")
+
+SHOW_FLOATING_LEGEND()
+
+@enduml

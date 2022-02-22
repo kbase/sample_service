@@ -11,10 +11,10 @@ The SDK API specification for the service is contained in the `SampleService.spe
 ## Contents
 
 - [Configuration](./configuration.md)
-- [Testing](./testing.md)
+- [Testing](./testing/index.md)
 - Development
   - [With Docker Containers](./development/local-docker.md)
-  - [GitHub Action Workflows](./development/github-action-workflows.md)
+  - [GitHub Action Workflows](./development/github-action-workflow/index.md)
 - [API Errors](./errors.md)
 - [Validation](./validation.md)
   - [Built-in Validators](./built-in-validators.md)

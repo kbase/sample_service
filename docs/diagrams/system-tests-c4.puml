@@ -1,0 +1,40 @@
+@startuml system-tests-c4
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!include sample-service-relations.puml
+
+title System Tests
+
+Person(developer, "Developer")
+
+System_Boundary(host, "Host", "Developer host machine") {
+    Container(make, "Make", "Runs test tasks")
+    Container(coverage, "Coverage", "html, lcov")
+    Container(source, "Source Code", "python source code in lib")
+    Container(mockData, "Mock Data", "required by mock services")
+}
+
+System_Boundary(docker, "Docker") {
+    Container(test, "Test Runner", "Runs unit tests against code")
+}
+
+
+Rel(developer, make, "Run System Tests Command", "make host-test-system-all")
+
+' Relations for calls
+Rel(test, sampleService, "calls", "JSON-RPC 1.1")
+
+
+Rel(make, test, "test-begin")
+Rel(make, test, "test-integration")
+Rel(make, test, "test-stop")
+Rel(make, test, "test-end")
+
+Rel_R(test, coverage, "clears")
+Rel_R(sampleService, coverage, "generates")
+Rel_R(sampleService, source, "uses", "volume mounted")
+
+Rel_R(mockServices, mockData, "uses", "volume mounted")
+
+SHOW_FLOATING_LEGEND()
+
+@enduml

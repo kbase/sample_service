@@ -1,0 +1,23 @@
+@startuml test-running
+
+
+System_Boundary(docker, "Docker") {
+    Container(test, "Test Runner", "Runs unit tests against code")
+    Container(sampleService, "Sample Service", "The Sample Service")
+    ContainerDb(arangoDb, "Arango DB", "database")
+    ContainerQueue(kafka, "Kafka", "event streaming")
+    Container(zookeeper, "Zookeeper", "configuration ")
+    Container(mockServices, "KBase Mock Services", "mocks kbase services") {
+        Container(workspace, "Workspace Service", "mocks workspace service")
+        Container(auth, "Auth Service", "mocks auth service")
+    }
+}
+
+' Relations for calls
+Rel(sampleService, arangoDb, "calls", "net")
+Rel(sampleService, kafka, "calls", "net")
+Rel(kafka, zookeeper, "calls", "net")
+Rel(sampleService, workspace, "calls", "net, JSON-RPC 1.1")
+Rel(sampleService, auth, "calls", "net, REST")
+
+@enduml

@@ -1,0 +1,39 @@
+@startuml system-tests-sequence
+title System Testing Sequence 
+
+actor Developer as developer
+boundary "Host Machine" as host 
+control make as make
+collections Coverage as coverage
+collections Source as source
+boundary Docker as docker
+control TestContainer as testContainer
+control SampleService as sampleService
+control ArangoDB as arangoDB
+control Kafka as kafka
+control Zookeepr as zookeeper
+control MockServices as mockServices
+
+' These are more relations, but in terms of process they are
+' part of the system process which makes these resources available
+host -> make : Hosts
+host -> coverage: Hosts
+testContainer -> coverage: Mounts
+docker -> testContainer: Hosts
+
+' Actual test process
+developer -> make : Invoke test runner
+make -> testContainer: Begin tests
+testContainer -> coverage: Clean
+make -> testContainer: Run system tests
+testContainer -> sampleService: calls (net: JSON-RPC/1.1)
+sampleService -> arangoDB: calls
+sampleService -> kafka: calls
+sampleService -> mockServices: calls for workspace & auth
+kafka -> zookeeper: calls
+testContainer -> coverage: Generates data
+make -> testContainer: End tests
+testContainer -> coverage: Generates reports
+
+
+@enduml
