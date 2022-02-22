@@ -49,9 +49,8 @@ compile:
 		--out . \
 		--html \
 
-test:
-	echo Use test-sdkless
-
+test: host-test-all
+	
 clean:
 	rm -rfv $(LBIN_DIR)
 
@@ -79,22 +78,22 @@ host-remove-dev-server:
 
 host-test-begin: 
 	@echo "Beginning tests..."
-	docker compose -f test/docker-compose.yml run --rm test begin
+	docker compose -f test/docker-compose-test.yml run --rm test begin
 
 host-test-end: 
 	@echo "Ending tests..."
-	docker compose -f test/docker-compose.yml run --rm test end
+	docker compose -f test/docker-compose-test.yml run --rm test end
 
 host-test-stop:
 	@echo "Stopping all test services"
-	docker compose -f test/docker-compose.yml stop
-	docker compose -f test/docker-compose.yml rm -f
+	docker compose -f test/docker-compose-test.yml -f test/docker-compose-test-with-services.yml stop
+	docker compose -f test/docker-compose-test.yml -f test/docker-compose-test-with-services.yml rm -f
 	@echo "Test services stopped"
 
 host-test-stop2:
 	@echo "Stopping all test services"
-	docker compose -f test/docker-compose.yml stop
-	docker compose -f test/docker-compose.yml rm -f
+	docker compose -f test/docker-compose-test.yml -f test/docker-compose-test-with-services.yml stop
+	docker compose -f test/docker-compose-test.yml -f test/docker-compose-test-with-services.yml rm -f
 	@echo "Test services stopped"
 
 #
