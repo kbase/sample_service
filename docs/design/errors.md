@@ -35,7 +35,7 @@ The current error codes are:
 
 Errors with the form of the request, or the programming of a method, may result in "standard" JSON-RPC errors.
 
-The word _standard_ is in quotes because this service utilizes [JSON-RPC 1.1](https://jsonrpc.org/historical/json-rpc-1-1-wd.html), which never actually settled on standard error codes (and was never actually released as a JSON-RPC standard). Rather, KBase utilizes error codes from [JSON-RPC 2.0](https://www.jsonrpc.org/specification).
+The word *standard* is in quotes because this service utilizes [JSON-RPC 1.1](https://jsonrpc.org/historical/json-rpc-1-1-wd.html), which never actually settled on standard error codes (and was never actually released as a JSON-RPC standard). Rather, KBase utilizes error codes from [JSON-RPC 2.0](https://www.jsonrpc.org/specification).
 
 The error codes are:
 
@@ -47,6 +47,3 @@ The error codes are:
 | -32602 | Invalid params | Invalid method parameter(s). |
 | -32603 | Internal error | Internal JSON-RPC error. |
 | -32000 to -32099| Server error | Reserved for implementation-defined server-errors. |
-
-```text
-```

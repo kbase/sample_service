@@ -1,4 +1,4 @@
-# GitHub Action Workflows
+# GitHub Action Workflow
 
 A GitHub Action (GHA) Workflow is in place to run tests and, should they succeed, build and store an image.
 
@@ -67,7 +67,6 @@ A GitHub release publication will result in an image tagged with `release-#`, wh
 E.g.:
 
 - For release 1.0.0: `ghcr.io/kbase/sample-service:release-v1.0.0`
-
 
 #### Manually
 

@@ -1,3 +1,5 @@
+# Validation
+
 Each node in the sample tree accepted by the `create_sample` method may contain controlled and
 user metadata. User metadata is not validated other than very basic size checks, while controlled
 metadata is validated based on configured validation rules.

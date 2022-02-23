@@ -1,4 +1,4 @@
-## Installation from another module
+# Installation from another module
 
 To use this code in another SDK module, call `kb-sdk install SampleService` in the other module's root directory.
 

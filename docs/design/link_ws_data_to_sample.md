@@ -1,4 +1,4 @@
-# Design document for linking workspace data to samples
+# Linking workspace data to samples
 
 ## Document purpose
 

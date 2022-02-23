@@ -1,17 +1,19 @@
+# Kafka
+
 The server may be configured to send notifications on events to Kafka - see the `deploy.cfg` file
 for information. The events and their respective JSON message formats are:
 
-### New sample or sample version
+## New sample or sample version
 
 ```json
 {
     "event_type": "NEW_SAMPLE",
     "sample_id": "<sample ID>",
-    "sample_ver": <sample version>
+    "sample_ver": "<sample version>"
  }
 ```
 
-### Sample ACL change
+## Sample ACL change
 
 ```json
 {
@@ -20,7 +22,7 @@ for information. The events and their respective JSON message formats are:
  }
 ```
 
-### New data link
+## New data link
 
 ```json
 {
@@ -29,7 +31,7 @@ for information. The events and their respective JSON message formats are:
  }
 ```
 
-### Expired data link
+## Expired data link
 
 ```json
 {

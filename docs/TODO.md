@@ -1,10 +1,14 @@
-# Design
+# TODO
+
+## Design
+
 * What are samples called? SampleReplicates?
 * Do we need replicate groups?
   * Case where samples are functionally subsamples but cannot be produced from the same sample
     as the experimental techniques don't allow it.
 
-# Functionality
+## Functionality
+
 * List / find samples, possibly with...
 * Search integration
 * Logging
@@ -16,14 +20,14 @@
   * remove self from acls (read/write)
   * change sample owner
     * Probably needs request / accept multistep flow
-* Cache workspace reponses
+* Cache workspace responses
 * Stand alone validator CLI
   * Validate without sending data to server
 * Versioning scheme for validator config
 * Kafka events
   * Improve reliability
     * Currently if the service goes down between DB modification for a new link/sample and kafka
-      reciept of the message the message is lost.
+      receipt of the message the message is lost.
     * Could improve reliability of messaging by putting a `sent` field or something like that on
       samples / links in the DB, and not updating the field until the kafka send succeeds.
     * On startup, look for unsent, older messages and resend.
@@ -39,11 +43,12 @@
     problematic/impossible.
   * Listing expired links for a given sample *and* data is definitely possible since the links
     don't overlap in time and can be sorted / paged by the creation date.
-      * Needs a sample/data/creation index.
-* Lots of opportunities for performance improvements if neccessary (bulk reads [and writes,
+    * Needs a sample/data/creation index.
+* Lots of opportunities for performance improvements if necessary (bulk reads [and writes,
   which are a lot harder])
 
-# Concerns:
+## Concerns
+
 * Searching for samples could get very expensive based on the queries.
   * Maybe just using a Lucene based solution is the way to go.
 * Searching for samples may be difficult as the metadata is embedded in the sample node
@@ -53,14 +58,17 @@
   * Lucene as above
 * If we want more features or constraints, linking data may get more complicated than is already is
 
-# Testing
+## Testing
+
 * flake8 and bandit on test-sdkless (generated code is poopy)
 * When https://github.com/python/mypy/issues/6385 is implemented, ditch all the stupid 
   `__init__.py` files
 
-# Misc
+## Misc
+
 * The ~10 documents that have been written about samples
 
-# Obsolete
+## Obsolete
+
 * Make kb-sdk test run in travis
   * full stack is tested without it so nevermind

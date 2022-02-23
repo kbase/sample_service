@@ -2,7 +2,7 @@
 
 All built in validators are in the `SampleService.core.validator.builtin` module.
 
-### noop
+## noop
 
 Example configuration:
 
@@ -16,7 +16,7 @@ validators:
 
 This validator accepts any and all values.
 
-### string
+## string
 
 Example configuration:
 
@@ -40,7 +40,7 @@ validators:
   If `keys` is not supplied, then it determines the maximum length of all keys and string values
   in the metadata value map.
 
-### enum
+## enum
 
 Example configuration:
 
@@ -61,7 +61,7 @@ validators:
 * `keys` is either a string or a list of strings and determines which keys will be checked by the
   validator. The key must exist and its value must be one of the `allowed-values`.
 
-### units
+## units
 
 Example configuration:
 
@@ -82,7 +82,7 @@ validators:
   `degR` are all acceptable input to the validator. Similarly, if `N` is given, `kg * m / s^2` and
   `lb * f / s^2` are both acceptable.
 
-### number
+## number
 
 Example configuration:
 
@@ -112,7 +112,7 @@ Ensures all values are integers or floats.
   less than, and less than or equal, and specify a range in which the number or numbers must exist.
   If `gt` or `lt` are specified, `gte` or `lte` cannot be specified, respectively, and vice versa.
 
-### ontology_has_ancestor
+## ontology_has_ancestor
 
 Example configuration:
 
