@@ -11,6 +11,10 @@
 - [Running Tests](#running-tests)
 - [Makefile](#makefile)
 - [Entrypoint](#entrypoint)
+- [Test Containers](#test-contaienrs)
+- [Test Data](#test-data)
+- [GitHub Action Workflow](#github-action-workflow)
+- [Coverage](#coverage)
 
 ## Quick Start
 
@@ -74,6 +78,7 @@ The available commands are:
 - `stop`
 - `end`
 - `unit`
+- `types`
 - `integration`
 - `system`
 
@@ -91,7 +96,7 @@ The developer invocation of test commands is via the Makefile:
 make host-test-COMMAND
 ```
 
-For example 
+For example:
 
 ```shell
 make host-test-begin
@@ -112,6 +117,7 @@ Although it is useful to have the Makefile define tasks (recipes) for each test 
 - host-test-all
   - also `make test`
 - host-test-unit-all
+- host-test-unit-types
 - host-test-integration-all
 - host-test-system-all
 
@@ -123,7 +129,7 @@ You may run all tests with a single command
 make host-test-all
 ```
 
-or 
+or
 
 ```shell
 make test
@@ -136,26 +142,6 @@ You may have noted the somewhat awkward `host-` prefix for the make task above. 
 For instance, in `kb_sdk` based apps, `make compile` is designed to be run from the host (directly on one's development machine) as well as by the app registration service, but `make test` is only supposed to be run by `kb_sdk` itself - one should use `kb-sdk test` to invoke the testing process which runs within a container.
 
 To help make the purpose of the testing make tasks clear, the ones designed to be run by a developer (or GHA workflow) are most prefixed with `host-`, and the ones designed to be run within a container are not.
-
-## Makefile
-
-All tests should be run through the provided `make` tasks, which are divided into host-run tasks (prefixed with `host-`), and container-run tasks (prefixed with `test-`). Only the `host-` tests should be run directly by the developer or GHA workflow; other make tasks are run by the entrypoint script within the container itself.
-
-Please see the [makefile](./makefile) document for a breakdown of all the make tasks.
-
-## Entrypoint
-
-All tests run with a special entrypoint script, located in `test/scripts/entrypoint.sh`, overriding the service entrypoint located in `scripts/entrypoint.sh`.
-
-This eliminates the mixing of the production and testing support within the entrypoint, and simplifies each entrypoint file (which have become more complex with the addition of entrypoint commands to invoke tests.)
-
-## Test Container
-
-All tests are run in a `test` container which uses the  sample service image. The reason for a separate container is that this allows us to expand the entrypoint without interfering with the service container. It also allows us to run the test container independently of the service, as unit tests require.
-
-Please see [docker](./docker.md) for details.
-
-## Running Tests
 
 ### Unit Tests
 
@@ -193,13 +179,23 @@ Since the code we are interested in for system tests is in the running sample se
 
 In truth, system tests could be run from any language.
 
-### Test Data
+## Makefile
 
-A major feature to testing is the manner in which test data is configured and made available to tests.
+All tests should be run through the provided `make` tasks, which are divided into host-run tasks (prefixed with `host-`), and container-run tasks (prefixed with `test-`). Only the `host-` tests should be run directly by the developer or GHA workflow; other make tasks are run by the entrypoint script within the container itself.
 
-In a previous incarnation of testing, test data was created directly within test code, and in the case of dependent KBase services, instantiated into local binary instances of those services via their respective APIs.
+Please see the [makefile](./makefile) document for a breakdown of all the make tasks.
 
-Now most test data is provided via json files, most of which are utilized by the `kbase-mock-services` service, which provides mock endpoints for KBase services. Test data is available in `test/data`.
+## Entrypoint
+
+All tests run with a special entrypoint script, located in `test/scripts/entrypoint.sh`, overriding the service entrypoint located in `scripts/entrypoint.sh`.
+
+This eliminates the mixing of the production and testing support within the entrypoint, and simplifies each entrypoint file (which have become more complex with the addition of entrypoint commands to invoke tests.)
+
+## Test Containers
+
+All tests are run in a `test` container which uses the sample service image. Using a separate container is allows us to use a specialized entrypoint. It also allows us to run the test container independently of the service, as unit tests require.
+
+Please see [docker](./docker.md) for details.
 
 ### 3rd Party Services
 
@@ -207,20 +203,32 @@ The sample service stores data in ArangoDB, and interfaces with Kafka to send an
 
 These services are run in their respective containers defined in `test/docker-compose-test-with-services.yml`.
 
-The ArangoDB instance is populated with collections at test beginning. These collections are cleared between tests. (Removing and recreating collections is more straightforward, but too slow.) ArangoDB is utilized during tests directly and via the sample service.
+The ArangoDB instance is [populated with collections](./arangodb-setup.md) at test beginning. These collections are cleared between tests. (Removing and recreating collections is more straightforward, but too slow.) ArangoDB is utilized during tests directly and via the sample service.
 
 The Kafka instance is utilized in a subset of tests to ensure that the appropriate messages are generated and consumed.
 
 ### KBase Services Mock Endpoint
 
-As opposed to 3rd party services, KBase services are mocked by a single mock service endpoint. This is done because:
+KBase services are mocked by a single mock service endpoint. 
+
+This has benefits compared  with running the actual services:
 
 - running actual services via mini-kbase is too resource intensive
 - KBase service endpoints utilized are rather limited, simple, constrained and used in a deterministic manner, which is suitable for the usage of static test data.
 
-The KBase Mock Services is a Deno server located at `https://github.com/kbaseIncubator/kbase-mock-services`. Deno was chosen because it supports *TypeScript*, the language of choice for front end development at KBase, and requires very little configuration and no direct dependency installation. The mock service project started as a tool for usage in front end development, and repurposed for this project.
+The KBase Mock Services is a [Deno](https://deno.land) server located at `https://github.com/kbaseIncubator/kbase-mock-services`. Deno was chosen because it supports _TypeScript_, the language of choice for front end development at KBase, and requires very little configuration and no direct dependency installation. The mock service project started as a tool for usage in front end development, and repurposed for this project.
 
 It is an incomplete project, but nevertheless works well in this case.
+
+## Test Data
+
+A major feature to testing is the manner in which test data is configured and made available to tests.
+
+In a previous incarnation of testing, test data was created directly within test code, and in the case of dependent KBase services, instantiated into local binary instances of those services via their respective APIs.
+
+Now most test data is provided via json files, most of which are utilized by the `kbase-mock-services` service, which provides mock endpoints for KBase services. Test data is available in `test/data`.
+
+See [test data](./data.md) for details.
 
 ## GitHub Action Workflow
 
@@ -228,11 +236,11 @@ All tests are run in a GitHub Action workflow. See [GitHub Action Workflow](./gi
 
 ## Coverage
 
-Coverage is collected from all three tests independently. This allows us to evaluate test coverage for unit, integration, and system tests separately, which can be useful for evaluating the coverage of those styles of tests.
+Coverage is collected from all three test suites (unit, integration, system) independently. This allows us to evaluate test coverage for each test suite separately, which can be useful for evaluating the coverage of each, or for reducing test execution time while adding and debugging tests.
 
-For the overall coverage, all coverage collection databases are combined together, and reports created for humans (html) and `lcov`-formatted data created for the "CodeCov" service.
+To create overall coverage, all coverage collection databases are combined together (via the "end" command), and reports created for humans (html) and `lcov`-formatted data created for the "CodeCov" service.
 
-To inspect coverage results for locally-run tests, open `htmlcov/index.html`. 
+To inspect coverage results for locally-run tests, open `htmlcov/index.html`.
 
 Coverage run in the GHA workflow are made available at the ["CodeCov" service](https://app.codecov.io/gh/kbase/sample_service).
 
