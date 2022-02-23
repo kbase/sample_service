@@ -1,34 +1,48 @@
 #!/bin/bash
 
 echo '[ENTRYPOINT-TEST] starting'
-echo "[ENTRYPOINT-TEST] using option ${1}"
+echo "[ENTRYPOINT-TEST] using command '${1}'"
 
-script_dir=$(dirname "$(readlink -f "$0")")
+script_dir=$(dirname "$(readlink -f $0)")
+
 export PYTHONPATH="$script_dir/..:${script_dir}/../lib:$PATH:$PYTHONPATH"
 
 echo "[ENTRYPOINT-TEST] Python path: ${PYTHONPATH}"
 
 if [ "${1}" = "bash" ] ; then
-  echo "[ENTRYPOINT-TEST] shell mode with Python path: ${PYTHONPATH}"
+  echo "[ENTRYPOINT-TEST] shell mode"
   bash
+
+elif [ "${1}" = "hello" ] ; then
+  echo "[ENTRYPOINT-TEST] HELLO"
+
 elif [ "${1}" = "begin" ] ; then
   echo "[ENTRYPOINT-TEST] begin tests"
   make test-begin
+
 elif [ "${1}" = "end" ] ; then
   echo "[ENTRYPOINT-TEST] end tests"
   make test-end
+
 elif [ "${1}" = "unit" ] ; then
-  echo "[ENTRYPOINT-TEST] unit-test mode with Python path: ${PYTHONPATH}"
+  echo "[ENTRYPOINT-TEST] unit-test mode"
   make test-unit
+
+elif [ "${1}" = "types" ] ; then
+  echo "[ENTRYPOINT-TEST] mypy types mode"
+  make test-types
+
 elif [ "${1}" = "integration" ] ; then
-  echo "[ENTRYPOINT-TEST] integration test mode with Python path: ${PYTHONPATH}"
+  echo "[ENTRYPOINT-TEST] integration test mode"
   SAMPLE_SERVICE_URL=http://sampleservice:5000 make wait-for-sample-service
   make test-integration
+
 elif [ "${1}" = "system" ] ; then
   echo "[ENTRYPOINT-TEST] system test mode with Python path: ${PYTHONPATH}"
   # Note that this is the internal address, so always port 5000.
   SAMPLE_SERVICE_URL=http://sampleservice:5000 make wait-for-sample-service
   make test-system
+
 else
   echo "[ENTRYPOINT-TEST] Error! Unknown entrypoint option: ${1}"
   exit 1

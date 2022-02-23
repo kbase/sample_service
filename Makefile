@@ -105,6 +105,11 @@ host-test-unit:
 	docker compose -f test/docker-compose-test.yml run --rm test unit
 	@echo "Unit tests done"
 
+host-test-types: 
+	@echo "Running mypy type tests ..."
+	docker compose -f test/docker-compose-test.yml run --rm test types
+	@echo "Type tests done"
+
 host-test-integration:
 	@echo "Running integration tests..."
 	docker compose \
@@ -127,7 +132,7 @@ host-test-system:
 # Bundled tasks. Each one of these will handle test environment startup, teardown, and generation of 
 # coverage reports
 #
-host-test-all: host-test-begin host-test-unit host-test-integration host-test-stop host-test-system host-test-stop2 host-test-end
+host-test-all: host-test-begin host-test-types host-test-unit host-test-integration host-test-stop host-test-system host-test-stop2 host-test-end
 
 host-test-unit-all: host-test-begin host-test-unit host-test-end
 
@@ -176,6 +181,12 @@ test-unit:
 		coverage run \
 			--rcfile=$(TEST_DIR)/coveragerc-unit \
 			--module pytest --verbose $(UNIT_TEST_SPEC)
+
+test-types:
+	@echo "Running type tests (mypy)"
+	MYPYPATH=$(MAKEFILE_DIR)/$(LIB_DIR) \
+	mypy --namespace-packages $(LIB_DIR)/$(SERVICE_CAPS)/core $(TEST_DIR)
+
 
 install-sdk: 
 	scripts/install-sdk.sh
