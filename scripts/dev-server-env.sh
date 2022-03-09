@@ -1,7 +1,7 @@
 #
 # The path to data for the mock services service
 #
-DEFAULT_MOCK_DATASET_PATH="${PWD}/dev/data/mock"
+DEFAULT_MOCK_DATASET_PATH="${PWD}/dev/data2"
 if [ -z "$MOCK_DATASET_PATH" ]; then
   echo "'MOCK_DATASET_PATH' environment variable not set - default of '${DEFAULT_MOCK_DATASET_PATH}' will be used"
   export DC_MOCK_DATASET_PATH=$DEFAULT_MOCK_DATASET_PATH
@@ -29,10 +29,19 @@ else
 fi
 
 DEFAULT_DETACH="no"
-if [ -z "$DETACH" ]; then
+if [ -z "${DETACH}" ]; then
   echo "'DETACH' environment variable not set - default of '${DEFAULT_DETACH}' will be used"
   export DC_DETACH=${DEFAULT_DETACH}
 else
-  echo "'DETACH' environment variable set to '$DETACH'"
-  export DC_DETACH=$DETACH
+  echo "'DETACH' environment variable set to '${DETACH}'"
+  export DC_DETACH=${DETACH}
+fi
+
+DEFAULT_ARANGO_VERSION="3.5.3"
+if [ -z "${ARANGO_VERSION}" ]; then
+  echo "'ARANGO_VERSION' environment variable not set - default of '${DEFAULT_ARANGO_VERSION}' will be used"
+  export DC_ARANGO_VERSION=${DEFAULT_ARANGO_VERSION}
+else
+  echo "'ARANGO_VERSION' environment variable is set to '${ARANGO_VERSION}'"
+  export DC_ARANGO_VERSION=${ARANGO_VERSION}
 fi

@@ -58,3 +58,10 @@ host-start-dev-server:
 
 host-stop-dev-server:
 	source scripts/dev-server-env.sh && sh scripts/stop-dev-server.sh
+
+
+host-start-dev-server-cluster:
+	source scripts/dev-server-env.sh && sh scripts/start-dev-server-cluster.sh
+
+host-stop-dev-server-cluster:
+	source scripts/dev-server-env.sh && sh scripts/stop-dev-server-cluster.sh
