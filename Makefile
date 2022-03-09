@@ -132,7 +132,7 @@ host-test-system:
 # Bundled tasks. Each one of these will handle test environment startup, teardown, and generation of 
 # coverage reports
 #
-host-test-all: host-test-begin host-test-unit host-test-integration host-test-stop host-test-system host-test-stop2 host-test-end
+host-test-all: host-test-begin host-test-types host-test-unit host-test-integration host-test-stop host-test-system host-test-stop2 host-test-end
 
 host-test-unit-all: host-test-begin host-test-unit host-test-end
 
@@ -185,7 +185,7 @@ test-unit:
 test-types:
 	@echo "Running type tests (mypy)"
 	MYPYPATH=$(MAKEFILE_DIR)/$(LIB_DIR) \
-	mypy --namespace-packages $(LIB_DIR)/$(SERVICE_CAPS)/core $(TEST_DIR)
+		mypy --namespace-packages $(LIB_DIR)/$(SERVICE_CAPS)/core $(TEST_DIR)
 
 
 install-sdk: 
