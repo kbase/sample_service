@@ -65,7 +65,7 @@ services:
     #      - "${PWD}/logs/arangodb/:/var/log/arangodb3"
     environment:
       - ARANGO_NO_AUTH=1
-    command: sh -c "arangodb --starter.local"
+    command: sh -c "arangodb --starter.local --starter.mode=cluster --cluster.agency-size=5"
 
   # Kafka setup, see https://hub.docker.com/r/bitnami/kafka
   zookeeper:
@@ -97,7 +97,7 @@ services:
       - KAFKA_INTER_BROKER_LISTENER_NAME=CLIENT
 
   mockservices:
-    image: ghcr.io/eapearson/kbase-mock-services:main
+    image: ghcr.io/eapearson/kbase-mock-services:feature-add-unit-testing
     ports:
       - "3333:3333"
     volumes:
