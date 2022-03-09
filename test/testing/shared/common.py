@@ -686,6 +686,7 @@ def get_links_from_sample_set_assert_error(
     error = sample_service.call_assert_error(
         "get_data_links_from_sample_set", params, debug=debug
     )
+
     if expected_message is not None:
         assert expected_message == error["message"]
     return error
