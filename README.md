@@ -1,4 +1,4 @@
-# SampleService
+# SampleService  
 
 Build status (master):
 ![example workflow](https://github.com/kbase/sample_service/actions/workflows/build-test-push.yml/badge.svg)

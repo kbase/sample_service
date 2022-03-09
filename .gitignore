@@ -1,12 +1,5 @@
-# IDEs and dev tools
-.vscode
-.cspell
-kb-sdk
-lib/SampleService/SampleServiceImpl.py.bak*
-# Python local usage
-__pycache__
-
-# Testing
+.DS_Store
+.idea
 test/test.cfg
 test_local
 .coverage
