@@ -109,4 +109,3 @@ jobs:
             BRANCH=${{ github.ref }}
             TAG=${{ github.ref }}
           tags: ghcr.io/${{ env.CI_REPOSITORY_OWNER }}/${{ env.CI_REPOSITORY_NAME }}:${{ env.IMAGE_TAG_NAME }}
-
