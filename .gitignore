@@ -1,10 +1,13 @@
-.DS_Store
+# Developer artifacts
+.vscode
 .idea
+deploy.cfg
+
+# Testing
 test/test.cfg
 test_local
 .coverage
 test/test_temp/
-deploy.cfg
 htmlcov
 cov_profile.lcov
 .coverage*
