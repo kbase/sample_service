@@ -18,6 +18,8 @@ export PYTHONPATH=$script_dir/../lib:$PATH:$PYTHONPATH
 
 echo "[ENTRYPOINT] Python path: ${PYTHONPATH}"
 
+timeout=30
+
 if [ "${1}" = "bash" ] ; then
   echo "[ENTRYPOINT] shell mode with Python path: ${PYTHONPATH}"
   bash
@@ -39,6 +41,7 @@ else
     python "${script_dir}/../lib/cli/prepare-arango.py"
     workers=1
     log_level=debug
+    timeout=120
   else
     echo "Unknown entrypoint option: ${1}"
     exit 1
@@ -46,7 +49,7 @@ else
 
   echo "[ENTRYPOINT] Starting gunicorn with Python path: ${PYTHONPATH}"
   exec gunicorn --worker-class gevent \
-      --timeout 30 \
+      --timeout $timeout \
       --reload \
       --workers $workers \
       --bind :5000 \
