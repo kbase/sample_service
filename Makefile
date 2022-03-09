@@ -184,8 +184,10 @@ test-unit:
 
 test-types:
 	@echo "Running type tests (mypy)"
+	which mypy
+	mypy --version
 	MYPYPATH=$(MAKEFILE_DIR)/$(LIB_DIR) \
-		mypy --namespace-packages $(LIB_DIR)/$(SERVICE_CAPS)/core $(TEST_DIR)
+		mypy --verbose --namespace-packages $(LIB_DIR)/$(SERVICE_CAPS)/core $(TEST_DIR)
 
 
 install-sdk: 
