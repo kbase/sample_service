@@ -2,6 +2,7 @@
 .vscode
 .idea
 deploy.cfg
+*.pyc
 
 # Testing
 test/test.cfg
