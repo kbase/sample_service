@@ -160,7 +160,7 @@ test-end:
 wait-for-sample-service:
 	@echo "Waiting for SampleService to be available"
 	@[ "${SAMPLE_SERVICE_URL}" ] || (echo "! Environment variable SAMPLE_SERVICE_URL must be set"; exit 1)
-	PYTHONPATH=$(TEST_PYPATH) python -c "from testing.shared.wait_for import wait_for_sample_service; wait_for_sample_service('$(SAMPLE_SERVICE_URL)', 60, 1) or sys.exit(1)"
+	PYTHONPATH=$(TEST_PYPATH) python -c "import sys; from testing.shared.wait_for import wait_for_sample_service; wait_for_sample_service('$(SAMPLE_SERVICE_URL)', 60, 1) or sys.exit(1)"
 
 test-integration:
 	@echo "Running integration tests (pytest) in $(INTEGRATION_TEST_SPEC)"
