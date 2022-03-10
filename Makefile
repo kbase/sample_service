@@ -61,7 +61,7 @@ host-stop-dev-server:
 
 
 host-start-dev-server-cluster:
-	source scripts/dev-server-env.sh && sh scripts/start-dev-server-cluster.sh
+	MOCK_DATASET_PATH=$(MAKEFILE_DIR)/dev/data2 source scripts/dev-server-env.sh && sh scripts/start-dev-server-cluster.sh
 
 host-stop-dev-server-cluster:
-	source scripts/dev-server-env.sh && sh scripts/stop-dev-server-cluster.sh
+	MOCK_DATASET_PATH=$(MAKEFILE_DIR)/dev/data2 source scripts/dev-server-env.sh && sh scripts/stop-dev-server-cluster.sh
