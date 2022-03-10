@@ -155,7 +155,9 @@ test-end:
 	@echo "Creating html coverage report"
 	coverage html
 	@echo "Converting coverage to lcov"
+	# coverage lcov --data-file .coverage -o cov_profile.lcov
 	coverage-lcov --data_file_path .coverage --output_file_path cov_profile.lcov
+	
 
 wait-for-sample-service:
 	@echo "Waiting for SampleService to be available"
