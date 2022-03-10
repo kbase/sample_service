@@ -185,6 +185,7 @@ test-unit:
 test-types:
 	@echo "Running type tests (mypy)"
 	which mypy
+	@echo "PATH: ${PATH}"
 	mypy --version
 	MYPYPATH=$(MAKEFILE_DIR)/$(LIB_DIR) \
 		mypy --verbose --namespace-packages $(LIB_DIR)/$(SERVICE_CAPS)/core $(TEST_DIR)
