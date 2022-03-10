@@ -5,7 +5,10 @@ echo "[ENTRYPOINT-TEST] using command '${1}'"
 
 script_dir=$(dirname "$(readlink -f $0)")
 
-export PYTHONPATH="$script_dir/..:${script_dir}/../../lib:$PATH:$PYTHONPATH"
+export ROOT_DIR=$(realpath "$script_dir/../..")
+export LIB_DIR="${ROOT_DIR}/lib"
+export TEST_DIR="${ROOT_DIR}/test"
+export PYTHONPATH="${TEST_DIR}:${LIB_DIR}:$PATH:$PYTHONPATH"
 
 echo "[ENTRYPOINT-TEST] Python path: ${PYTHONPATH}"
 
@@ -30,7 +33,8 @@ elif [ "${1}" = "unit" ] ; then
 
 elif [ "${1}" = "types" ] ; then
   echo "[ENTRYPOINT-TEST] mypy types mode"
-  make test-types
+  MYPYPATH="${LIB_DIR}" python -m mypy --namespace-packages "${LIB_DIR}/SampleService/core" "${TEST_DIR}"
+  # make test-types
 
 elif [ "${1}" = "integration" ] ; then
   echo "[ENTRYPOINT-TEST] integration test mode"
