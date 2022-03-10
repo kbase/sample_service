@@ -5,7 +5,7 @@ echo "[ENTRYPOINT-TEST] using command '${1}'"
 
 script_dir=$(dirname "$(readlink -f $0)")
 
-export PYTHONPATH="$script_dir/..:${script_dir}/../lib:$PATH:$PYTHONPATH"
+export PYTHONPATH="$script_dir/..:${script_dir}/../../lib:$PATH:$PYTHONPATH"
 
 echo "[ENTRYPOINT-TEST] Python path: ${PYTHONPATH}"
 
