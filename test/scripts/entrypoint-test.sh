@@ -30,14 +30,7 @@ elif [ "${1}" = "unit" ] ; then
 
 elif [ "${1}" = "types" ] ; then
   echo "[ENTRYPOINT-TEST] mypy types mode"
-  which mypy
-  file $(which mypy)
-  if [[ -x $(which mypy) ]]; then
-    echo "mypy is executable :)"
-    echo "Version: $(mypy --version)"
-  else
-    echo "mypy is not executable :("
-  fi
+
   make test-types
 
 elif [ "${1}" = "integration" ] ; then
