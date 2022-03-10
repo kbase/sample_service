@@ -3,6 +3,8 @@
 .idea
 deploy.cfg
 *.pyc
+.mypy_cache
+.pytest_cache
 
 # Testing
 test/test.cfg
