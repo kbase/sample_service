@@ -30,7 +30,6 @@ elif [ "${1}" = "unit" ] ; then
 
 elif [ "${1}" = "types" ] ; then
   echo "[ENTRYPOINT-TEST] mypy types mode"
-
   make test-types
 
 elif [ "${1}" = "integration" ] ; then
