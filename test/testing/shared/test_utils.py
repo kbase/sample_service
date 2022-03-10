@@ -65,7 +65,7 @@ def assert_exception_correct(got: Exception, expected: Exception):
     assert type(got) == type(expected)
 
 
-def assert_ms_epoch_close_to_now(some_time_ms, close_ms=1000):
+def assert_ms_epoch_close_to_now(some_time_ms, close_ms=10000):
     now_ms = time.time() * 1000
     assert now_ms + close_ms > some_time_ms
     assert now_ms - close_ms < some_time_ms
