@@ -186,6 +186,9 @@ test-types:
 	@echo "Running type tests (mypy)"
 	which mypy
 	@echo "PATH: ${PATH}"
+	@echo "MYPYPATH: $(MAKEFILE_DIR)/$(LIB_DIR) "
+	@echo "HMM:  $(LIB_DIR)/$(SERVICE_CAPS)/core"
+	@echo "HMM:  $(TEST_DIR)"
 	mypy --version
 	MYPYPATH=$(MAKEFILE_DIR)/$(LIB_DIR) \
 		mypy --verbose --namespace-packages $(LIB_DIR)/$(SERVICE_CAPS)/core $(TEST_DIR)
