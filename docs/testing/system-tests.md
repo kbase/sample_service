@@ -18,10 +18,10 @@ In truth, system tests could be run from any language.
 
 This diagram shows an overview of the sequence of actions involved in running unit tests
 
-![unit tests](../diagrams/out/system-tests-sequence/system-tests-sequence.png)
+![unit tests](../diagrams/images/system_tests_sequence.png)
 
 ### C4 Process Diagram
 
 This diagram shows the relationships between systems and system components.
 
-![unit tests](../diagrams/out/system-tests-c4/system-tests-c4.png)
+![unit tests](../diagrams/images/system_tests_c4.png)

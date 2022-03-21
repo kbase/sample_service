@@ -1,6 +1,6 @@
-@startuml Unit Test Sequence
+@startuml unit-test-sequence
 
-title Unit Testing
+title Unit Testing - Sequence
 
 actor Developer as developer
 boundary "Host Machine" as host 

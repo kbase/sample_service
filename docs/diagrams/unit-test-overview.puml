@@ -1,4 +1,5 @@
-@startuml test-running
+@startuml unit-test-overview
+
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
 title "System Overview - Running Unit Tests"

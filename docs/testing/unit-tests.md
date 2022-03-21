@@ -24,10 +24,10 @@ This invocation will:
 
 This diagram shows an overview of the sequence of actions involved in running unit tests
 
-![unit tests](../diagrams/images/unit-test-sequence.png)
+![unit tests](../diagrams/images/unit_test_sequence.png)
 
 ### C4 Process Diagram
 
 This diagram shows the relationships between systems and system components.
 
-![unit tests](../diagrams/images/unit-test-c4.png)
+![unit tests](../diagrams/images/unit_test_overview.png)

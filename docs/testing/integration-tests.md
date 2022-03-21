@@ -23,10 +23,10 @@ Note that although the _sampleservice_ is started as part of the docker compose 
 
 This diagram shows an overview of the sequence of actions involved in running unit tests
 
-![unit tests](../diagrams/out/integration-tests-sequence/integration-tests-sequence.png)
+![unit tests](../diagrams/images/integration_tests_sequence.png)
 
 ### C4 Process Diagram
 
 This diagram shows the relationships between systems and system components.
 
-![unit tests](../diagrams/out/integration-tests-c4/integration-tests-c4.png)
+![unit tests](../diagrams/images/integration_tests_c4.png)
