@@ -5,6 +5,7 @@ deploy.cfg
 *.pyc
 .mypy_cache
 .pytest_cache
+kb-sdk
 
 # Testing
 test/test.cfg
