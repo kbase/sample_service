@@ -132,8 +132,7 @@ host-test-system:
 # Bundled tasks. Each one of these will handle test environment startup, teardown, and generation of 
 # coverage reports
 #
-# NB: host-test-types removed for now as it is breaking on GHA.
-host-test-all: host-test-begin host-test-unit host-test-integration host-test-stop host-test-system host-test-stop2 host-test-end
+host-test-all: host-test-begin host-test-types host-test-unit host-test-integration host-test-stop host-test-system host-test-stop2 host-test-end
 
 host-test-unit-all: host-test-begin host-test-unit host-test-end
 
