@@ -13,7 +13,9 @@ These services will be utilized by integration tests which either operate direct
 
 ## Starting
 
-Normally, test services are automatically started and stopped by the canonical `make test` task. However, when debugging the services (e.g. changing the version of a service), you may wish to start and stop them in isolation. 
+Normally, test services are automatically started and stopped by the canonical `make test` task, in which case you do not need to bother with how these services run. 
+
+However, there are certain situations, such as debugging the services (e.g. changing the version of a service), you may wish to start and stop them in isolation. 
 
 The test services are started with a single `make` task defined in the top level `Makefile`.
 

@@ -17,9 +17,10 @@ make test-setup
 
 If any errors are reported, consult [the troubleshooting document](./troubleshooting.md).
 
-Testing requires the following host programs:
+Testing requires the following [host programs](./dependencies.md):
+
 - wget
-- java 1.8 (other versions?)
+- java >= 1.8 
 - docker
 - python 3.7
 - pipenv
@@ -33,4 +34,4 @@ make test
 3. When tests are successfully completed, a coverage summary will be displayed. A human-readable coverage report will be available in [`htmlcov/index.html`](../../htmlcov/index.html).
 
 
-4. Coverage data end reports are excluded from git, so you can safely ignore any test artifacts.
+4. Coverage data end reports are excluded from git, so you may safely ignore any test artifacts.
