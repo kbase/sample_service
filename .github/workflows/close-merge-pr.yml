@@ -9,11 +9,11 @@ on:
 jobs:
   test:
     if: ${{ github.event.pull_request.merged }}
-    uses: ./.github/workflows/test.yml
+    uses: ./.github/workflows/reusable-test.yml
   build-push:
     if: ${{ github.event.pull_request.merged }}
     needs: test
-    uses: ./.github/workflows/build-push.yml
+    uses: ./.github/workflows/reusable-build-push.yml
     with:
       tag: ${{ github.ref_name }}
     secrets:
