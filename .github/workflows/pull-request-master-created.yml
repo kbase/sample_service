@@ -1,7 +1,11 @@
 ---
-name: Manual
+name: PR to master opened
 on:
- workflow_dispatch:
+  pull_request:
+    branches:
+      - master
+    types:
+      - opened
 jobs:
   test:
     uses: ./.github/workflows/reusable-test.yml
@@ -10,7 +14,7 @@ jobs:
     uses: ./.github/workflows/reusable-build-push.yml
     with:
       name: ${{ github.repository }}
-      tag: ${{ github.ref_name }}
+      tag: pr${{ github.event.release.tag_name }}
     secrets:
       ghcr_username: ${{ secrets.GHCR_USERNAME }}
-      ghcr_token: ${{ secrets.GHCR_TOKEN }}
+      ghcr_token: pr${{ secrets.GHCR_TOKEN }}

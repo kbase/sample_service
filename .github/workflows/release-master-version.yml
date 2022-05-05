@@ -1,7 +1,10 @@
 ---
-name: Manual
+name: Release - Test, Build & Push Image
 on:
- workflow_dispatch:
+  release:
+    branches:
+      - master
+    types: [ published ]
 jobs:
   test:
     uses: ./.github/workflows/reusable-test.yml
@@ -10,7 +13,7 @@ jobs:
     uses: ./.github/workflows/reusable-build-push.yml
     with:
       name: ${{ github.repository }}
-      tag: ${{ github.ref_name }}
+      tag: ${{ github.event.release.tag_name }}
     secrets:
       ghcr_username: ${{ secrets.GHCR_USERNAME }}
       ghcr_token: ${{ secrets.GHCR_TOKEN }}

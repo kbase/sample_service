@@ -49,3 +49,12 @@ The image may be addressed at `ghcr.io/kbase/sample_service:TAG`, for example
 ```shell
 docker pull ghcr.io/kbase/sample_service:pull_request-462
 ```
+
+## Image name and taging requirements
+
+- An image named `{REPONAME}-develop:pr#` is created when a PR to develop is first created.
+- An image named `{REPONAME}-develop:latest` is created/tagged when a PR to develop is merged.
+- An image named `{REPONAME}:pr#` is created when a PR to main (master) is first created.
+- An image named `{REPONAME}:latest-rc` is created/tagged when a PR to main (master) is merged.
+- A final release image is published using the Draft a new release functionality, which results in an imaged tagged as `{REPONAME}:x.x.x` and `{REPONAME}:latest`.
+- An optional on-demand workflow can be used to trigger image builds from any branch at any time if desired.

@@ -1,0 +1,20 @@
+---
+name: PR to develop opened
+on:
+  pull_request:
+    branches:
+      - develop
+    types:
+      - opened
+jobs:
+  test:
+    uses: ./.github/workflows/reusable-test.yml
+  build-push:
+    needs: test
+    uses: ./.github/workflows/reusable-build-push.yml
+    with:
+      name: ${{ github.repository }}-develop
+      tag: pr${{ github.event.release.tag_name }}
+    secrets:
+      ghcr_username: ${{ secrets.GHCR_USERNAME }}
+      ghcr_token: pr${{ secrets.GHCR_TOKEN }}

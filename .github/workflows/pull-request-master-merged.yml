@@ -1,11 +1,11 @@
 ---
-name: PR (closed, merged) - Test, Build & Push Image
+name: PR To master merged
 on:
   pull_request:
     branches:
       - master
-      - develop
-    types: [closed]
+    types:
+      - closed
 jobs:
   test:
     if: ${{ github.event.pull_request.merged }}
@@ -15,7 +15,8 @@ jobs:
     needs: test
     uses: ./.github/workflows/reusable-build-push.yml
     with:
-      tag: ${{ github.ref_name }}
+      name: ${{ github.repository }}
+      tag: latest-rc
     secrets:
       ghcr_username: ${{ secrets.GHCR_USERNAME }}
-      ghcr_token: ${{ secrets.GHCR_TOKEN }}
+      ghcr_token: pr${{ secrets.GHCR_TOKEN }}
