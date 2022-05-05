@@ -15,6 +15,4 @@ jobs:
     with:
       name: ${{ github.repository }}
       tag: pr${{ github.event.release.tag_name }}
-    secrets:
-      ghcr_username: ${{ secrets.GHCR_USERNAME }}
-      ghcr_token: pr${{ secrets.GHCR_TOKEN }}
+    secrets: inherit
