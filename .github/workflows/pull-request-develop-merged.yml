@@ -9,11 +9,11 @@ on:
 jobs:
   test:
     if: ${{ github.event.pull_request.merged }}
-    uses: ./.github/workflows/reusable-test.yml
+    uses: ./.github/workflows/reusable_test-python.yml
   build-push:
     if: ${{ github.event.pull_request.merged }}
     needs: test
-    uses: ./.github/workflows/reusable-build-push.yml
+    uses: ./.github/workflows/reusable_build-push.yml
     with:
       name: ${{ github.event.repository.name }}-develop
       tag: latest

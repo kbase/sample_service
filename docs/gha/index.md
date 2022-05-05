@@ -17,9 +17,9 @@ GitHub Actions supports a type of workflow termed a "reusable workflow". Such wo
 
 The reusable workflows are:
 
-- `reusable-test.yml` - sets up and runs all tests
+- `reusable_test-python.yml` - sets up and runs all tests
   - parameters: none
-- `reusable-build-push-image.yml` - builds the service image, and pushes it to GHCR 
+- `reusable_build-push.yml` - builds the service image, and pushes it to GHCR 
   - parameters
     - `name` - the image name 
     - `tag` - the tag for the image

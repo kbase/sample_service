@@ -6,11 +6,13 @@ on:
       - master
     types: [ published ]
 jobs:
+  ensure-semver:
+    uses: ./.github/workflows/reusable_ensure-semver.yml
   test:
-    uses: ./.github/workflows/reusable-test.yml
+    uses: ./.github/workflows/reusable_test-python.yml
   build-push:
     needs: test
-    uses: ./.github/workflows/reusable-build-push.yml
+    uses: ./.github/workflows/reusable_build-push.yml
     with:
       name: ${{ github.event.repository.name }}
       tag: ${{ github.event.release.tag_name }}
