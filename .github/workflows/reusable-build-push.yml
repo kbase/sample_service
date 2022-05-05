@@ -48,4 +48,4 @@ jobs:
             VCS_REF=${{ github.sha }}
             BRANCH=${{ github.ref }}
             TAG=${{ github.ref }}
-          tags: ghcr.io/${{ github.repository }}/${{ inputs.name }}:${{ inputs.tag }}
+          tags: ghcr.io/${{ github.event.repository.owner }}/${{ inputs.name }}:${{ inputs.tag }}
