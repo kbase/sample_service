@@ -14,5 +14,5 @@ jobs:
     uses: ./.github/workflows/reusable-build-push.yml
     with:
       name: ${{ github.event.repository.name }}-develop
-      tag: pr${{ github.event.release.tag_name }}
+      tag: pr${{ github.event.number }}
     secrets: inherit
