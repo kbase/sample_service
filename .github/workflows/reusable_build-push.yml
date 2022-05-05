@@ -44,10 +44,11 @@ jobs:
           script: |
             console.log('CONTEXT', context);
             const imageTags = (() => {
-              if (typeof context.inputs.tag === 'string') {
-                return context.inputs.tag.split(',');
+              const tag = core.getInput('tag');
+              if (typeof tag === 'string') {
+                return tag.split(',');
               } else {
-                return context.inputs.tag;
+                return tag;
               }
             })();
             console.log('SCRIPT');
