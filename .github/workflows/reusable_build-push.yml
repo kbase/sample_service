@@ -42,19 +42,12 @@ jobs:
         with:
           result-encoding: string
           script: |
-            console.log('CONTEXT', context);
-            const imageTags = (() => {
-              const tag = core.getInput('tag');
-              if (typeof tag === 'string') {
-                return tag.split(',');
-              } else {
-                return tag;
-              }
-            })();
-            console.log('SCRIPT');
-            console.log(imageTags);
-            return imageTags.map((tag) => {
-              return `ghcr.io/${github.event.repository.owner.login}/${inputs.name}:${tag}`;
+            # console.log('CONTEXT', context);
+            const tags = '${{ inputs.tag }}';
+            const username = '${{ github.event.repository.owner.login }}'
+            const repoName = '${{ inputs.name }}';
+            return tag.split(',').map((tag) => {
+              return `ghcr.io//${username}/${repoName}:${tag}`;
             }).join(',');
 
       - name: Build and push
