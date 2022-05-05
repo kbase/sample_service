@@ -42,8 +42,9 @@ jobs:
         with:
           result-encoding: string
           script: |
-            const tags = '${{ inputs.tag }}';
-            const username = '${{ github.event.repository.owner.login }}';
+            const tags = '${{ inputs.tag }}'.split(',');
+#            const username = '${{ github.event.repository.owner.login }}';
+            const username = "eapearson";
             const repoName = '${{ inputs.name }}';
             console.log('SCRIPT', tags, username, repoName);
 
