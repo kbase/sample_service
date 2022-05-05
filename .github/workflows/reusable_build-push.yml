@@ -36,6 +36,26 @@ jobs:
           username: ${{ secrets.GHCR_USERNAME }}
           password: ${{ secrets.GHCR_TOKEN }}
 
+      - name: Create github action tags from image tags
+        id: tags
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            console.log('CONTEXT', context);
+            const imageTags = (() => {
+              if (typeof context.inputs.tag === 'string') {
+                return context.inputs.tag.split(',');
+              } else {
+                return context.inputs.tag;
+              }
+            })();
+            console.log('SCRIPT');
+            console.log(imageTags);
+            return imageTags.map((tag) => {
+              return `ghcr.io/${github.event.repository.owner.login}/${inputs.name}:${tag}`;
+            }).join(',');
+
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
@@ -48,4 +68,4 @@ jobs:
             VCS_REF=${{ github.sha }}
             BRANCH=${{ github.ref }}
             TAG=${{ github.ref }}
-          tags: ghcr.io/${{ github.event.repository.owner.login }}/${{ inputs.name }}:${{ inputs.tag }}
+          tags: ${{ steps.tags.outputs.result }}
