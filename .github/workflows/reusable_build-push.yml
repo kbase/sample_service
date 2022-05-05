@@ -43,11 +43,9 @@ jobs:
           result-encoding: string
           script: |
             const tags = '${{ inputs.tag }}'.split(',');
-#            const username = '${{ github.event.repository.owner.login }}';
             const username = "eapearson";
             const repoName = '${{ inputs.name }}';
             console.log('SCRIPT', tags, username, repoName);
-
 
       - name: Build and push
         uses: docker/build-push-action@v2
