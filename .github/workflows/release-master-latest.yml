@@ -8,6 +8,8 @@ on:
 jobs:
   ensure-semver:
     uses: ./.github/workflows/reusable_ensure-semver.yml
+    with:
+      semver: ${{ github.event.release.tag_name }}
   test:
     uses: ./.github/workflows/reusable_test-python.yml
   build-push:
