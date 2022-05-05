@@ -13,6 +13,6 @@ jobs:
     needs: test
     uses: ./.github/workflows/reusable-build-push.yml
     with:
-      name: ${{ github.repository }}-develop
+      name: ${{ github.event.repository.name }}-develop
       tag: pr${{ github.event.release.tag_name }}
     secrets: inherit
