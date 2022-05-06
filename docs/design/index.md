@@ -10,3 +10,4 @@
 - [Linking Workspace Data to Samples in RE](./link_ws_data_to_sample_in_RE.md)
 - [Validation](./validation.md)
 - [ArangoDB Schema](./arango_db.md)
+- [High-Level](./highlevel_diagram.md)
