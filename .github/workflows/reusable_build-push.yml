@@ -47,7 +47,7 @@ jobs:
             const repoName = '${{ inputs.name }}';
             console.log('SCRIPT', tags, username, repoName);
             return tags.map((tag) => {
-              return `ghcr.io//${username}/${repoName}:${tag}`;
+              return `ghcr.io/${username}/${repoName}:${tag}`;
             }).join(',');
 
       - name: Build and push
