@@ -9,7 +9,7 @@ jobs:
   ensure-semver:
     uses: ./.github/workflows/reusable_ensure-semver.yml
     with:
-      semver: ${{ github.event.release.tag_name }}
+      semver: '${{ github.event.release.tag_name }}'
   test:
     needs: ensure-semver
     uses: ./.github/workflows/reusable_test-python.yml
@@ -17,6 +17,6 @@ jobs:
     needs: test
     uses: ./.github/workflows/reusable_build-push.yml
     with:
-      name: ${{ github.event.repository.name }}
-      tag: latest
+      name: '${{ github.event.repository.name }}'
+      tag: '${{ github.event.release.tag_name }},latest'
     secrets: inherit
