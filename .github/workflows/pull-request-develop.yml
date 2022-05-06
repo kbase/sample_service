@@ -12,7 +12,7 @@ jobs:
     test:
       uses: ./.github/workflows/reusable_test-python.yml
   build-push:
-        needs: test
+    needs: test
     uses: ./.github/workflows/reusable_build-push.yml
     with:
       name: '${{ github.event.repository.name }}-develop'
