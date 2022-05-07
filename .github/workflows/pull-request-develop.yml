@@ -9,8 +9,8 @@ on:
       - reopened
       - synchronize
 jobs:
-    test:
-      uses: ./.github/workflows/reusable_test-python.yml
+  test:
+    uses: ./.github/workflows/reusable_test-python.yml
   build-push:
     needs: test
     uses: ./.github/workflows/reusable_build-push.yml
