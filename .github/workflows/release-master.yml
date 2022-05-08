@@ -7,7 +7,7 @@ on:
     types: [ published ]
 jobs:
   ensure-semver:
-    uses: ./.github/workflows/reusable_ensure-semver.yml
+    uses: ./.github/workflows/reusable_ensure-semver-js.yml
     with:
       semver: '${{ github.event.release.tag_name }}'
   test:
