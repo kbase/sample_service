@@ -17,5 +17,5 @@ jobs:
     with:
       name: '${{ github.event.repository.name }}-develop'
       push: false
-      tag: ignore
+      tags: ignore
     secrets: inherit

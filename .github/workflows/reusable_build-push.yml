@@ -12,8 +12,8 @@ on:
         required: false
         default: true
         type: boolean
-      tag:
-        description: The image tag
+      tags:
+        description: The image tags
         required: true
         type: string
     secrets:
@@ -49,7 +49,7 @@ jobs:
         with:
           result-encoding: string
           script: |
-            const tags = '${{ inputs.tag }}'.split(',');
+            const tags = '${{ inputs.tags }}'.split(',');
             const username = '${{ github.event.repository.owner.login }}';
             const repoName = '${{ inputs.name }}';
             return tags.map((tag) => {

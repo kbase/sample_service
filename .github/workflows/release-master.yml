@@ -7,9 +7,9 @@ on:
     types: [ published ]
 jobs:
   ensure-semver:
-    uses: ./.github/workflows/reusable_ensure-semver-js.yml
+    uses: ./.github/workflows/reusable_ensure-semver.yml
     with:
-      semver: '${{ github.event.release.tag_name }}'
+      release_tag: '${{ github.event.release.tag_name }}'
   test:
     needs: ensure-semver
     uses: ./.github/workflows/reusable_test-python.yml
@@ -18,5 +18,5 @@ jobs:
     uses: ./.github/workflows/reusable_build-push.yml
     with:
       name: '${{ github.event.repository.name }}'
-      tag: '${{ github.event.release.tag_name }},latest'
+      tags: '${{ github.event.release.tag_name }},latest'
     secrets: inherit
