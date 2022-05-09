@@ -6,12 +6,12 @@ on:
       - master
     types: [ published ]
 jobs:
-  ensure-semver:
+  validate-release-tag:
     uses: ./.github/workflows/reusable_validate-release-tag.yml
     with:
       release_tag: '${{ github.event.release.tag_name }}'
   test:
-    needs: ensure-semver
+    needs: validate-release-tag
     uses: ./.github/workflows/reusable_test-python.yml
   build-push:
     needs: test
