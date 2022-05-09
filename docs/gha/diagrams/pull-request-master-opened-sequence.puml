@@ -1,0 +1,18 @@
+@startuml
+
+Developer -> "GitHub UI": Create PR for develop to master
+"GitHub System" -> "GitHub System": emits event pull_request opened
+"GitHub System" -> "Controlling Workflow": Runs\nif matches event
+"Controlling Workflow" -> "Reusable Test Workflow": Runs
+"Reusable Test Workflow" -> "GitHub UI": if any test fails
+"GitHub UI" -[#red]> "GitHub UI": show error
+"Reusable Test Workflow" -> "CodeCov": sends coverage
+"Controlling Workflow" -> "Reusable Build/Push Workflow": Runs\ninput: name, tag
+"Reusable Build/Push Workflow" -> "Reusable Build/Push Workflow": build image
+"Reusable Build/Push Workflow" -> "GitHub UI": if build fails
+"GitHub UI" -[#red]> "GitHub UI": show error
+"Reusable Build/Push Workflow" -> "GitHub Container Registry": push image\nsample_service/pr123
+"Reusable Build/Push Workflow" -> "GitHub UI": if build succeeds
+"GitHub UI" -[#green]> "GitHub UI": show success
+
+@enduml

@@ -1,0 +1,21 @@
+@startuml
+
+Developer -> "GitHub UI": Creates PR against ""develop""
+"GitHub System" -> "GitHub System": emits event\n""pull_request"" ""opened""
+"GitHub System" -> "Controlling Workflow": Runs
+"Controlling Workflow" -> "Reusable Test Workflow": Runs
+"Reusable Test Workflow" -[#red]> "Controlling Workflow" : if any test fails\nexit with error
+"Controlling Workflow" -[#red]> "GitHub UI": if exit with error\nterminate workflow
+"GitHub UI" -[#red]> "GitHub UI": show error
+"Reusable Test Workflow" -> "CodeCov": sends coverage
+"Reusable Test Workflow" -[#green]> "Controlling Workflow": success
+"Controlling Workflow" -> "Reusable Build Workflow": Runs
+"Reusable Build Workflow" -> "Reusable Build Workflow": build image
+"Reusable Build Workflow" -[#red]> "Controlling Workflow": if build fails\nexit with error
+"Controlling Workflow" -[#red]> "GitHub UI": if exit with error\nterminate workflow
+"GitHub UI" -[#red]> "GitHub UI": show error
+"Reusable Build Workflow" -[#green]> "Controlling Workflow":success
+"Controlling Workflow" -[#green]> "GitHub UI":success
+"GitHub UI" -[#green]> "GitHub UI": show success
+
+@enduml
