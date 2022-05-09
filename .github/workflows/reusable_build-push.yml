@@ -11,11 +11,6 @@ on:
         description: The image tags
         required: true
         type: string
-    secrets:
-      ghcr_username:
-        required: true
-      ghcr_token:
-        required: true
 jobs:
   build-push-image:
     runs-on: ubuntu-latest
