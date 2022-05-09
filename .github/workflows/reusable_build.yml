@@ -1,5 +1,5 @@
 ---
-name: Build & Push Image to GHCR
+name: Build Image without pushing
 on:
   workflow_call:
 jobs:
