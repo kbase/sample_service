@@ -1,5 +1,5 @@
 ---
-name: Ensure Semantic Version
+name: Ensure release tag is semantic version
 on:
   workflow_call:
     inputs:
@@ -10,11 +10,11 @@ jobs:
   ensure-semver:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate release version tag as a semantic version
+      - name: Validate that release tag as a proper semantic version
         uses: actions/github-script@v6
         with:
           script: |
-            const releaseVersion = '${{ inputs.release_tag }}';
-            if (!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(releaseVersion)) {
-              core.setFailed(`Release version must follow semantic version naming (e.g. 1.0.2) but is "${releaseVersion}"`)
+            const releaseTag = '${{ inputs.release_tag }}';
+            if (!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(releaseTag)) {
+              core.setFailed(`Release version must follow semantic version naming (e.g. 1.0.2) but is "${releaseTag}"`)
             }
