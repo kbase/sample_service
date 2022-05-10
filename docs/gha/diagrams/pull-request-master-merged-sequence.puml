@@ -3,22 +3,22 @@
 actor Developer
 box GitHub #LightBlue
 participant "GitHub UI" as GH
-participant "Controlling Workflow\npull-request-master-opened.yml" as Workflow
+participant "Controlling Workflow\npull-request-master-merged.yml" as Workflow
 participant "Reusable Test Workflow\nreusable_test-python.yml" as TestWorkflow
-participant "Reusable Build/Push Workflow\nreusable_build-push.yml" as BuildPushWorkflow
+participant "Reusable Build/Push Workflow\nreusable_build-test.yml" as BuildPushWorkflow
 end box
 box "GitHub Container Registry" #LightYellow
 participant GHCR
 end box
 participant CodeCov
 
-title Pull Request from ""develop"" to ""master"" opened
+title Pull Request from ""develop"" to ""master"" Merged
 
 == Invoke ==
-Developer -> GH: Create PR from ""develop"" to ""master""
-GH -> GH: emits event\n ""pull_request"" ""opened""
+Developer -> GH: Merge PR to ""master""
+GH -> GH: emits event\n ""pull_request"" ""closed""
 GH -[#blue]> Workflow: Runs\n if matches event and merged
-activate Workflow
+activate  Workflow
 
 Workflow -[#blue]> TestWorkflow: Runs
 
@@ -45,13 +45,13 @@ BuildPushWorkflow -[#red]> Workflow: if login fails\n exit with error
 Workflow -[#red]> GH: if exit with error\n terminate workflow
 GH -[#red]> Developer: show error
 
-BuildPushWorkflow -> GHCR: push image\n name: ""sample_service""\n tag: ""pr#""
+BuildPushWorkflow -> GHCR: push image\n name: ""sample_service""\n tag: ""latest-rc""
 BuildPushWorkflow -[#green]> Workflow:success
 deactivate BuildPushWorkflow
 
 Workflow -[#green]> GH:success
-
 deactivate Workflow
+
 GH -[#green]> Developer: show success
 
 @enduml

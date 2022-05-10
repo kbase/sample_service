@@ -116,22 +116,25 @@ Triggered by closing and merging a pull request against the `develop` branch. Th
    
 Triggered by opening a pull request (`opened` event)  against the `master` branch. This workflow  creates an image with name `sample_service` and a tag like `pr#`, where `#` is the pull request number.
 
-> TODO: diagram
+![pull request master opened sequence diagram](./images/pull-request-master-opened-sequence.png)
+
 
 ### `pull-request-master-merged.yml`  
    
 Triggered by closing and merging a pull request against the `master` branch. This workflow  creates an image with name `sample_service` and the tag `latest-rc`.
 
-> TODO: diagram
+![pull request master merged sequence diagram](./images/pull-request-master-merged-sequence.png)
+
 
 ### `release-master`  
    
 Triggered by the creation (`published` event) of a GitHub release against the `master` branch. This workflow creates an image with the name `sample_service` and applies two tags - the release tag, which is typically a semver `#.#.#`, and `latest-rc`
 
-> TODO: diagram
+![release against master published sequence diagram](./images/release-master-sequence.png)
+
 
 ### `manual.yml`  
    
 triggered by `workflow_dispatch`, so can be run by the GitHub UI button. It runs both test and image build/push, and a tag which is the branch name. The supports the use case of generating an image from any branch. E.g. in order to preview changes in a feature or fix branch, one may run this workflow specifying a branch which is either the source for a PR or may become one, generating an image that may be previewed and verifying through shared test results that the changes are non-breaking.
 
-> TODO: diagram
+![manual sequence diagram](./images/manual-sequence.png)

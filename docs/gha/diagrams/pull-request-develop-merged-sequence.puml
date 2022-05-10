@@ -1,21 +1,57 @@
 @startuml
 
-Developer -> "GitHub UI": Merge PR to ""develop""
-"GitHub System" -> "GitHub System": emits event\n ""pull_request"" ""closed""
-"GitHub System" -> "Controlling Workflow": Runs\n if matches event and merged
-"Controlling Workflow" -> "Reusable Test Workflow": Runs
-"Reusable Test Workflow" -[#red]> "Controlling Workflow" : if any test fails\nexit with error
-"Controlling Workflow" -[#red]> "GitHub UI": if exit with error\nterminate workflow
-"GitHub UI" -[#red]> "GitHub UI": show error
-"Reusable Test Workflow" -> "CodeCov": sends coverage
-"Controlling Workflow" -> "Reusable Build/Push Workflow": Runs\ninput: name, tag
-"Reusable Build/Push Workflow" -> "Reusable Build/Push Workflow": build image
-"Reusable Build Workflow" -[#red]> "Controlling Workflow": if build fails\nexit with error
-"Controlling Workflow" -[#red]> "GitHub UI": if exit with error\nterminate workflow
-"GitHub UI" -[#red]> "GitHub UI": show error
-"Reusable Build/Push Workflow" -> "GitHub Container Registry": push image\n ""sample_service-develop/latest""
-"Reusable Build Workflow" -[#green]> "Controlling Workflow":success
-"Controlling Workflow" -[#green]> "GitHub UI":success
-"GitHub UI" -[#green]> "GitHub UI": show success
+actor Developer
+box GitHub #LightBlue
+participant "GitHub" as GH
+participant "Controlling Workflow\npull-request-develop-merged.yml" as Workflow
+participant "Reusable Test Workflow\nreusable_test-python.yml" as TestWorkflow
+participant "Reusable Build/Push Workflow\nreusable_build-push.yml" as BuildPushWorkflow
+end box
+box "GitHub Container Registry" #LightYellow
+participant GHCR
+end box
+participant CodeCov
+
+title Pull Request to ""develop"" Merged
+
+== Invoke ==
+Developer -> GH: Merge PR to ""develop""
+GH -> GH: emits event\n ""pull_request"" ""closed""
+GH -[#blue]> Workflow: Runs\n if matches event and merged
+activate Workflow
+
+Workflow -[#blue]> TestWorkflow: Runs
+
+== Test ==
+activate TestWorkflow
+TestWorkflow -[#red]> Workflow : if any test fails\n exit with error
+Workflow -[#red]> GH: if exit with error\n terminate workflow
+GH -[#red]> Developer: show error
+TestWorkflow -> CodeCov: sends coverage
+TestWorkflow -[#green]> Workflow: success
+deactivate TestWorkflow
+
+Workflow -[#blue]> BuildPushWorkflow: Runs\n input: name, tag
+
+== Build and Push ==
+activate BuildPushWorkflow
+BuildPushWorkflow -> BuildPushWorkflow: build image
+BuildPushWorkflow -[#red]> Workflow: if build fails\n exit with error
+Workflow -[#red]> GH: if exit with error\n terminate workflow
+GH -[#red]> Developer: show error
+
+BuildPushWorkflow -> GHCR: Login\n GHCR_USERNAME\n GHCR_TOKEN
+BuildPushWorkflow -[#red]> Workflow: if login fails\n exit with error
+Workflow -[#red]> GH: if exit with error\n terminate workflow
+GH -[#red]> Developer: show error
+
+BuildPushWorkflow -> GHCR: push image\n name: ""sample_service-develop""\n tag: ""latest""
+BuildPushWorkflow -[#green]> Workflow:success
+deactivate BuildPushWorkflow
+
+Workflow -[#green]> GH:success
+deactivate Workflow
+
+GH -[#green]> Developer: show success
 
 @enduml

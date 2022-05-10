@@ -1,21 +1,57 @@
 @startuml
 
-Developer -> "GitHub UI": Creates PR against ""develop""
-"GitHub System" -> "GitHub System": emits event\n""pull_request"" ""opened""
-"GitHub System" -> "Controlling Workflow": Runs
-"Controlling Workflow" -> "Reusable Test Workflow": Runs
-"Reusable Test Workflow" -[#red]> "Controlling Workflow" : if any test fails\nexit with error
-"Controlling Workflow" -[#red]> "GitHub UI": if exit with error\nterminate workflow
-"GitHub UI" -[#red]> "GitHub UI": show error
-"Reusable Test Workflow" -> "CodeCov": sends coverage
-"Reusable Test Workflow" -[#green]> "Controlling Workflow": success
-"Controlling Workflow" -> "Reusable Build Workflow": Runs
-"Reusable Build Workflow" -> "Reusable Build Workflow": build image
-"Reusable Build Workflow" -[#red]> "Controlling Workflow": if build fails\nexit with error
-"Controlling Workflow" -[#red]> "GitHub UI": if exit with error\nterminate workflow
-"GitHub UI" -[#red]> "GitHub UI": show error
-"Reusable Build Workflow" -[#green]> "Controlling Workflow":success
-"Controlling Workflow" -[#green]> "GitHub UI":success
-"GitHub UI" -[#green]> "GitHub UI": show success
+actor Developer
+box GitHub #LightBlue
+participant "GitHub UI" as GH
+participant "Controlling Workflow\npull-request-develop.yml" as Workflow
+participant "Reusable Test Workflow\nreusable_test-python.yml" as TestWorkflow
+participant "Reusable Build Workflow\nreusable_build.yml" as BuildWorkflow
+end box
+participant CodeCov
+
+title Pull Request to ""develop"" opened, reopened, or synchronized
+
+== Invoke ==
+alt Create PR
+Developer -> GH: Create PR against ""develop""
+GH -> GH: emits event\n ""pull_request"" ""opened""
+GH -[#blue]> Workflow: Runs\n if event matches
+activate Workflow
+else Reopen PR
+Developer -> GH: Reopen closed PR
+GH -> GH: emits event\n ""pull_request"" ""reopened""
+GH -[#blue]> Workflow: Runs\n if event matches
+else Update PR source branch
+Developer -> GH: Push commits to source branch for PR
+GH -> GH: emits event\n ""pull_request"" ""synchronize""
+GH -[#blue]> Workflow: Runs\n if event matches
+end
+
+Workflow -[#blue]> TestWorkflow: Runs
+
+== Test ==
+activate TestWorkflow
+TestWorkflow -[#red]> Workflow : if any test fails\nexit with error
+Workflow -[#red]> GH: if exit with error\nterminate workflow
+GH -[#red]> Developer: show error
+TestWorkflow -> "CodeCov": sends coverage
+TestWorkflow -[#green]> Workflow: success
+deactivate TestWorkflow
+
+Workflow -[#blue]> BuildWorkflow: Runs
+
+== Build ==
+activate BuildWorkflow
+BuildWorkflow -> BuildWorkflow: build image
+BuildWorkflow -[#red]> Workflow: if build fails\nexit with error
+Workflow -[#red]> GH: if exit with error\nterminate workflow
+GH -[#red]> Developer: show error
+BuildWorkflow -[#green]> Workflow:success
+deactivate BuildWorkflow
+
+Workflow -[#green]> GH:success
+
+deactivate Workflow
+GH -[#green]> Developer: show success
 
 @enduml
