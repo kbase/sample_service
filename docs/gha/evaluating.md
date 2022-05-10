@@ -1,34 +1,40 @@
 # testing on a fork
 
-This document describes some techniques for verifying that GHA workflows work as designed. The core of this technique is to use a fork of kbase/sample_service to perform pushes to branches, develop, master, pull requests, and releases.
+This document describes a techniques for verifying that GHA workflows work as designed. The core of this technique is to use a fork of `kbase/sample_service` to interact with GitHub in a manner which triggers the workflows to run.
 
-If there are any mistakes in these steps (or GH makes changes to the interface), or you simply want to improve formatting or add images, please feel free.
+If there are any mistakes in these steps (or GH makes changes to the interface), or you simply want to improve formatting or add images, please feel free to update this doc.
 
 ## Set up fork
 
-1. Fork repo https://github.com/kbase/sample_service.
+1. Fork repo `https://github.com/kbase/sample_service`.
 2. Create a Personal Access Token (PAT)
    1. Under your user menu (upper right corner of the page)
-      1. Settings
-      2. Developer settings
-      3. Personal access tokens
-      4. Generate new token
-   2. Under "Note" give it a description
-   3. For expiration, you can leave as default 30 days
-   4. For scopes, select "write:packages", which will also select other scopes by default
-   5. Generate token
-   6. copy token
-3. Add as secret:
+      1. Select **Settings** from the dropdown menu
+      2. Select **Developer settings** from the vertical menu on the left; it is at the bottom.
+      3. Select **Personal access tokens** from the vertical menu on the left.
+      4. Click the **Generate new token** located to the right of "Personal access tokens".
+   2. You may be asked to log in again, or confirm your password.
+   3. Under **Note** give it a description
+   4. For **Expiration**, you can leave as default 30 days
+   5. For scopes, select **write:packages**, which will also select other scopes by default
+   6. Click the **Generate token** at the bottom of the page
+   7. The new token will be displayed, with a small button displayed to the right of it
+    ![copy button](./images/copy-token.png)
+   8. Click the copy button to copy the token to the clipboard
+3. Next we add "secrets" for the actions to utilize
    1. You may find it reassuring to open a new browser window to the repo, just so you don't lose the copied token
-   2. Under the repo Settings
-      1. Secrets
-      2. Actions
-      3. New repository secret
-      4. Name: GHCR_TOKEN
-      5. Value: paste the token copied above
-      6. New repository secret
-      7. Name: GHCR_USERNAME
-      8. Value: paste your username (the account that owns the fork)
+   2. Click the repo settings button (looks like a gear)
+    ![repo settings button](./images/repo-settings.png)
+   3. In the vertical menu on the left, select **Secrets**
+   4. Select **Actions** from the menu that drops down
+   5. Create the token secret:
+      1. Click the **New repository secret** button
+      2. For **Name:** enter `GHCR_TOKEN`
+      3. For **Value:** paste the token copied above
+   6. Create the username secret:
+      1. Click the **New repository secret** button
+      2. For **Name:** enter enter `GHCR_USERNAME`
+      3. For **Value:** enter your username (the account that owns the fork)
 
 
 ## Pull Request workflow (to develop branch)
@@ -37,9 +43,9 @@ For a PR to develop, we expect tests to run, without building an image.
 
 1. Create a branch locally and then push it up to your fork.
 
-3. switch to the branch in the GitHub ui for your fork
+2. switch to the branch in the GitHub ui for your fork
 
-4. Click the **Contribute** dropdown, then click the **Open Pull Request** button.
+3. Click the **Contribute** dropdown, then click the **Open Pull Request** button.
     
     ![disabled button](./images/enabled-button.png)
 
@@ -47,38 +53,38 @@ For a PR to develop, we expect tests to run, without building an image.
    
    ![disabled button](./images/disabled-button.png)
 
-5. The **base repository** will default to the upstream kbase repo
+4. The **base repository** will default to the upstream kbase repo
 
     ![base repository kbase](./images/base-repository-kbase.png)
 
-6. Switch the base repository to the fork
+5. Switch the base repository to the fork
 
     ![base repository fork](./images/base-repository-fork.png)
 
-7. Finally, switch the branch to develop
+6. Finally, switch the branch to develop
 
     ![base repository develop](./images/base-repository-develop.png)
 
-8. Create the test PR by clicking the **Create pull request** button
+7. Create the test PR by clicking the **Create pull request** button
 
-9. Visit the Actions tab
+8. Visit the Actions tab
 
-10. You should find that there is one action running, which will be labeled with the PR title
+9. You should find that there is one action running, which will be labeled with the PR title
 
-11. If you click on the workflow, you'll be taken to the workflow details page. There you should see that there is one job running, labeled "test/run-tests":
+10. If you click on the workflow, you'll be taken to the workflow details page. There you should see that there is one job running, labeled "test/run-tests":
 
     ![pr workflow running job](./images/job-running.png)
 
-12. Note that only the testing workflow is running.
+11. Note that only the testing workflow is running.
 
-13. When the workflow is finished successfully, the job status indicator will turn green:
+12. When the workflow is finished successfully, the job status indicator will turn green:
 
     ![pr workflow completed job](./images/job-finished.png)
 
 
 ## Merge PR workflow (to develop branch)
 
-After merging a PR against develop, we expect tests to run and for an image to be built and pushed. 
+After merging a PR into develop, we expect tests to run and for an image to be built and pushed. 
 
 1. From the forked repo home page, select the **Pull requests** tab
 

@@ -1,20 +1,6 @@
-# GitHub Action (GHA) Workflow
+# Workflows
 
-This project uses GitHub Action workflows to
-
-- run unit and integration tests,
-- build an image containing the service,
-- tag the image appropriately, and
-- publish the image to GitHub Container Registry
-
-This is accomplished with a set of 9 workflow files located in `./github/workflows`.
-
-See:
- - [workflows](./workflows.md) for a description of the workflows,
- - [testing workflows](./evaluating.md) for a non-destructive technique to exercise workflows at GitHub,
- - []
-
-Of these workflow files, 3 are [_reusable workflows_](https://docs.github.com/en/enterprise-cloud@latest/actions/using-workflows/reusing-workflows) containing the primary workflow logic, and 7 are _controlling workflows_ (my term) which invoke reusable workflows and are triggered by specific conditions.
+Of the 9 workflow files comprising the GHA support, 3 are [_reusable workflows_](https://docs.github.com/en/enterprise-cloud@latest/actions/using-workflows/reusing-workflows) containing the primary workflow logic, and 7 are _controlling workflows_ (my term) which invoke reusable workflows and are triggered by specific conditions.
 
 > GitHub Actions supports a type of workflow termed a [_reusable workflow_](https://docs.github.com/en/enterprise-cloud@latest/actions/using-workflows/reusing-workflows). Such workflows may only be run by being included in another workflow. They differ from a normal workflow in that they can only use a special triggering condition `on.workflow_call`, and they may define a set of input parameters.
 
