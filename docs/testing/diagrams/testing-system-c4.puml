@@ -23,8 +23,8 @@ System_Boundary(host, "Host", "Developer host machine") {
     Container(testCode, "Test Code", "python code for testing source code")
     Container(sampleService, "Sample Service", "The Sample Service")
     Container(testScript, "Test Script", "Runs tests")
-    Container(workspace, "KBase Workspace")
-    Container(auth, "KBase Auth")
+    Container(workspace, "KBase Workspace", $link="https://github.com/kbase/workspace_deluxe")
+    Container(auth, "KBase Auth", $link="https://github.com/kbase/auth2")
 }
 
 ' Relations within host

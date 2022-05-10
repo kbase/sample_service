@@ -17,3 +17,5 @@ make test
 - [Troubleshooting](./troubleshooting.md)
 
 > Note: Although this service is based on [kb_sdk](https://github.com/kbase/kb_sdk), tests are not run by `kb-sdk`.
+
+![Testing System Overview C4 Diagram](./images/testing_system_c4.png)
