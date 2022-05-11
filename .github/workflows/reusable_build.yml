@@ -3,7 +3,7 @@ name: Build Image without pushing
 on:
   workflow_call:
 jobs:
-  build-push-image:
+  build-image:
     runs-on: ubuntu-latest
     steps:
       - name: Check out GitHub Repo
