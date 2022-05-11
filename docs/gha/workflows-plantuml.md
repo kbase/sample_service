@@ -95,61 +95,13 @@ Note that in the diagrams below, only major events are shown. For example, there
   
 Triggered by opening, reopening, or synchronizing a pull request (`opened`, `reopened`, and `synchronize` event) against the `develop` branch. This workflow does not push an image to GHCR.
 
-workflows.md
+![pull request to develop opened sequence diagram](./images/pull-request-develop-sequence.png)
 
 ### `pull-request-develop-merged.yml`  
 
 Triggered by closing and merging a pull request against the `develop` branch. This workflow  creates an image with name `sample_service-develop` and the tag `latest`.
 
-```mermaid
-sequenceDiagram
-    actor Developer
-    participant GH as GitHub UI 
-    participant Workflow as Controlling Workflow 
-    participant TestWorkflow as Reusable Test Workflow 
-    participant BuildWorkflow as Reusable Build Workflow
-    participant CodeCov
-    
-    alt Create PR
-        Developer ->> GH: Create PR against develop
-        GH ->> GH: emits event (pull_request opened)
-        GH ->> Workflow: Runs (if event matches)
-        activate Workflow
-    else Reopen PR
-        Developer ->> GH: Reopen closed PR
-        GH ->> GH: emits event (pull_request reopened)
-        GH ->> Workflow: Runs (if event matches)
-    else Update PR source branch
-        Developer ->> GH: Push commits to source branch for PR
-        GH ->> GH: emits event (pull_request synchronize)
-        GH ->> Workflow: Runs (if event matches)
-    end
-    
-    Workflow ->> TestWorkflow: Runs
-
-    activate TestWorkflow
-    TestWorkflow ->> Workflow : if any test fails (exit with error)
-    Workflow ->> GH: if exit with error (terminate workflow)
-    GH ->> Developer: show error
-    TestWorkflow ->> CodeCov: sends coverage
-    TestWorkflow ->> Workflow: success
-    deactivate TestWorkflow
-    
-    Workflow ->> BuildWorkflow: Runs
-    
-    activate BuildWorkflow
-    BuildWorkflow ->> BuildWorkflow: build image
-    BuildWorkflow ->> Workflow: if build fails (exit with error)
-    Workflow ->> GH: if exit with error (terminate workflow)
-    GH ->> Developer: show error
-    BuildWorkflow ->> Workflow:success
-    deactivate BuildWorkflow
-    
-    Workflow ->> GH:success
-    
-    deactivate Workflow
-    GH ->> Developer: show success
-```
+![pull request to develop merged sequence diagram](./images/pull-request-develop-merged-sequence.png)
 
 ### `pull-request-main-opened.yml`  
    
