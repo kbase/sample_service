@@ -103,25 +103,25 @@ Triggered by closing and merging a pull request against the `develop` branch. Th
 
 ![pull request to develop merged sequence diagram](./images/pull-request-develop-merged-sequence.png)
 
-### `pull-request-master-opened.yml`  
+### `pull-request-main-opened.yml`  
    
-Triggered by opening a pull request (`opened` event)  against the `master` branch. This workflow  creates an image with name `sample_service` and a tag like `pr#`, where `#` is the pull request number.
+Triggered by opening a pull request (`opened` event)  against the `main` (or legacy `master`) branch. This workflow  creates an image with name `sample_service` and a tag like `pr#`, where `#` is the pull request number.
 
-![pull request master opened sequence diagram](./images/pull-request-master-opened-sequence.png)
+![pull request main opened sequence diagram](./images/pull-request-main-opened-sequence.png)
 
 
-### `pull-request-master-merged.yml`  
+### `pull-request-main-merged.yml`  
    
-Triggered by closing and merging a pull request against the `master` branch. This workflow  creates an image with name `sample_service` and the tag `latest-rc`.
+Triggered by closing and merging a pull request against the `main` (or legacy `master`) branch. This workflow  creates an image with name `sample_service` and the tag `latest-rc`.
 
-![pull request master merged sequence diagram](./images/pull-request-master-merged-sequence.png)
+![pull request main merged sequence diagram](./images/pull-request-main-merged-sequence.png)
 
 
-### `release-master`  
+### `release-main`  
    
-Triggered by the creation (`published` event) of a GitHub release against the `master` branch. This workflow creates an image with the name `sample_service` and applies two tags - the release tag, which is typically a semver `#.#.#`, and `latest-rc`
+Triggered by the creation (`published` event) of a GitHub release against the `main` (or legacy `master`) branch. This workflow creates an image with the name `sample_service` and applies two tags - the release tag, which is typically a semver `#.#.#`, and `latest-rc`
 
-![release against master published sequence diagram](./images/release-master-sequence.png)
+![release against main published sequence diagram](./images/release-main-sequence.png)
 
 
 ### `manual.yml`  

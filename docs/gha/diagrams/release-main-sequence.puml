@@ -3,7 +3,7 @@
 actor Developer
 box GitHub #LightBlue
 participant "GitHub UI" as GH
-participant "Controlling Workflow\npull-request-master-opened.yml" as Workflow
+participant "Controlling Workflow\nrelease-main.yml" as Workflow
 participant "Reusable Test Workflow\nreusable_test-python.yml" as TestWorkflow
 participant "Reusable Build/Push Workflow\nreusable_build-push.yml" as BuildPushWorkflow
 end box
@@ -12,17 +12,23 @@ participant GHCR
 end box
 participant CodeCov
 
-title Pull Request from ""develop"" to ""master"" opened
+title Release from ""main""
+
+legend top right
+Note that the branch referred to as ""main"" may be ""master""
+in legacy repos.
+end legend
 
 == Invoke ==
-Developer -> GH: Create PR from ""develop"" to ""master""
-GH -> GH: emits event\n ""pull_request"" ""opened""
-GH -[#blue]> Workflow: Runs\n if matches event and merged
+Developer -> GH: Create Release ""#.#.#""\n against ""main""
+GH -> GH: emits event\n ""release"" ""published""
+GH -[#blue]> Workflow: Runs\n if event matches
 activate Workflow
 
 Workflow -[#blue]> TestWorkflow: Runs
 
 == Test ==
+
 activate TestWorkflow
 TestWorkflow -[#red]> Workflow : if any test fails\n exit with error
 Workflow -[#red]> GH: if exit with error\n terminate workflow
@@ -45,7 +51,7 @@ BuildPushWorkflow -[#red]> Workflow: if login fails\n exit with error
 Workflow -[#red]> GH: if exit with error\n terminate workflow
 GH -[#red]> Developer: show error
 
-BuildPushWorkflow -> GHCR: push image\n name: ""sample_service""\n tag: ""pr#""
+BuildPushWorkflow -> GHCR: push image\n name: ""sample_service""\n tags: ""#.#.#"", ""latest""
 BuildPushWorkflow -[#green]> Workflow:success
 deactivate BuildPushWorkflow
 

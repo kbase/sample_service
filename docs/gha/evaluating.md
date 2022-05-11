@@ -121,9 +121,9 @@ After merging a PR into develop, we expect tests to run and for an image to be b
    4. Under **Recent tagged image versions** you should see that the most recent image is tagged `develop`
 
 
-## Pull Request workflow (from develop to master branch) 
+## Pull Request workflow (from `develop` to `main` (or legacy `master`) branch) 
 
-For a PR from develop to master, we expect tests to run, without building an image.
+For a PR from develop to `main` (or legacy `master`), we expect tests to run, without building an image.
 
 1. switch to the **develop** branch in the GitHub ui for your fork
 
@@ -141,7 +141,7 @@ For a PR from develop to master, we expect tests to run, without building an ima
 
 7. Finally, switch the branch to develop
 
-    ![base repository master](./images/base-repository-master.png)
+    ![base repository main](./images/base-repository-main.png)
 
 8. Create the test PR by clicking the **Create pull request** button
 
@@ -160,9 +160,9 @@ For a PR from develop to master, we expect tests to run, without building an ima
     ![pr workflow completed job](./images/job-finished.png)
 
 
-## Merge PR (to master branch) workflow
+## Merge PR (to `main` (or legacy `master`) branch) workflow
 
-After merging a PR against master, we expect tests to run and for an image to be built and pushed. 
+After merging a PR from `develop` to `main` (or legacy `master`), we expect tests to run and for an image to be built and pushed. 
 
 1. From the forked repo home page, select the **Pull requests** tab
 
@@ -196,7 +196,7 @@ After merging a PR against master, we expect tests to run and for an image to be
    3. Under the **Visibility:** dropdown, select **Private**
       1. Since this is a fork, the packages are considered "private"
       2. You should see "sample_service" listed under the packages
-   4. Under **Recent tagged image versions** you should see that the most recent image is tagged `master`
+   4. Under **Recent tagged image versions** you should see that the most recent image is tagged `pr#`, where `#` is the pull request number.
 
 ## Release workflow
 
@@ -240,7 +240,7 @@ After merging a PR against master, we expect tests to run and for an image to be
 
 1. In your local repo, create a branch and push it to the fork
    1. The branch can be named anything, in this example it is "feature-SAM-238"
-   2. You can of course use existing branches develop or master
+   2. You can of course use existing branches `develop` or `main` (or legacy `master`)
    
 2. Visit the forked repo
 
