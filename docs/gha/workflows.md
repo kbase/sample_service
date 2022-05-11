@@ -113,19 +113,21 @@ sequenceDiagram
     alt Create PR
         Developer ->> GH: Create PR against develop
         GH ->> GH: emits event (pull_request opened)
-        GH ->> Workflow: Runs (if event matches)
-        activate Workflow
     else Reopen PR
         Developer ->> GH: Reopen closed PR
         GH ->> GH: emits event (pull_request reopened)
-        GH ->> Workflow: Runs (if event matches)
     else Update PR source branch
         Developer ->> GH: Push commits to source branch for PR
         GH ->> GH: emits event (pull_request synchronize)
-        GH ->> Workflow: Runs (if event matches)
     end
     
+    activate Workflow
+    GH ->> Workflow: Runs (if event matches)
+    
     Workflow ->> TestWorkflow: Runs
+    
+    rect rgb(38, 103, 138)
+    note over Workflow,TestWorkflow: Testing
 
     activate TestWorkflow
     TestWorkflow ->> Workflow : if any test fails (exit with error)
@@ -135,7 +137,12 @@ sequenceDiagram
     TestWorkflow ->> Workflow: success
     deactivate TestWorkflow
     
+    end
+    
     Workflow ->> BuildWorkflow: Runs
+    
+    rect rgb(120, 27, 44)
+    note over BuildWorkflow, Workflow: Build Image
     
     activate BuildWorkflow
     BuildWorkflow ->> BuildWorkflow: build image
@@ -147,6 +154,8 @@ sequenceDiagram
     
     Workflow ->> GH:success
     
+    end
+    
     deactivate Workflow
     GH ->> Developer: show success
 ```
@@ -154,6 +163,75 @@ sequenceDiagram
 ### `pull-request-main-opened.yml`  
    
 Triggered by opening a pull request (`opened` event)  against the `main` (or legacy `master`) branch. This workflow  creates an image with name `sample_service` and a tag like `pr#`, where `#` is the pull request number.
+
+```mermaid
+sequenceDiagram
+    actor Developer
+    participant GH as GitHub UI 
+    participant Workflow as Controlling Workflow 
+    participant TestWorkflow as Reusable Test Workflow 
+    participant BuildWorkflow as Reusable Build/Push Workflow
+    participant GHCR as GitHub Container Registry
+    participant CodeCov
+    
+    alt Create PR
+        Developer ->> GH: Create PR against develop
+        GH ->> GH: emits event (pull_request opened)
+    else Reopen PR
+        Developer ->> GH: Reopen closed PR
+        GH ->> GH: emits event (pull_request reopened)
+    else Update PR source branch
+        Developer ->> GH: Push commits to source branch for PR
+        GH ->> GH: emits event (pull_request synchronize)
+    end
+    
+    activate Workflow
+    GH ->> Workflow: Runs (if event matches)
+    
+    Workflow ->> TestWorkflow: Runs
+    
+    rect rgb(38, 103, 138)
+    note over Workflow,TestWorkflow: Testing
+
+    activate TestWorkflow
+    TestWorkflow ->> Workflow : if any test fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    TestWorkflow ->> CodeCov: sends coverage
+    TestWorkflow ->> Workflow: success
+    deactivate TestWorkflow
+    
+    end
+    
+    Workflow ->> BuildWorkflow: Runs
+    
+    rect rgb(120, 27, 44)
+    note over BuildWorkflow, Workflow: Build and Push Image
+    
+    activate BuildWorkflow
+    BuildWorkflow ->> BuildWorkflow: build image
+    BuildWorkflow ->> Workflow: if build fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    BuildWorkflow ->> Workflow:success
+    
+    BuildWorkflow ->> GHCR: Login (GHCR_USERNAME, GHCR_TOKEN)
+    BuildWorkflow ->> Workflow: if login fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    
+    BuildWorkflow ->> GHCR: push image (sample_service-develop:latest)
+    BuildWorkflow ->> Workflow:success
+    
+    deactivate BuildWorkflow
+    
+    Workflow ->> GH:success
+    
+    end
+    
+    deactivate Workflow
+    GH ->> Developer: show success
+```
 
 ![pull request main opened sequence diagram](./images/pull-request-main-opened-sequence.png)
 

@@ -15,18 +15,18 @@ title Pull Request to ""develop"" opened, reopened, or synchronized
 alt Create PR
 Developer -> GH: Create PR against ""develop""
 GH -> GH: emits event\n ""pull_request"" ""opened""
-GH -[#blue]> Workflow: Runs\n if event matches
-activate Workflow
 else Reopen PR
 Developer -> GH: Reopen closed PR
 GH -> GH: emits event\n ""pull_request"" ""reopened""
-GH -[#blue]> Workflow: Runs\n if event matches
 else Update PR source branch
 Developer -> GH: Push commits to source branch for PR
 GH -> GH: emits event\n ""pull_request"" ""synchronize""
-GH -[#blue]> Workflow: Runs\n if event matches
 end
 
+
+GH -[#blue]> Workflow: Runs\n if event matches
+
+activate Workflow
 Workflow -[#blue]> TestWorkflow: Runs
 
 == Test ==
