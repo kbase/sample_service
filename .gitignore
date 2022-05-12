@@ -15,9 +15,7 @@ test_local
 test/test_temp/
 test/bin/jars
 test/bin/mongo
-test/bin/arangodb
-test/bin/kafka
-test/bin/temp
+test/test-services.log
 htmlcov/
 cov_profile.lcov
 temp_test_dir
