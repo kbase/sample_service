@@ -3,6 +3,7 @@ name: Release - Test, Build & Push Image
 on:
   release:
     branches:
+      - main
       - master
     types: [ published ]
 jobs:

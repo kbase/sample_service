@@ -11,6 +11,6 @@ on:
 jobs:
   test:
     uses: ./.github/workflows/reusable_test-python.yml
-  build-push:
+  build:
     needs: test
     uses: ./.github/workflows/reusable_build.yml

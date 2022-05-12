@@ -1,20 +1,19 @@
 ---
-name: PR To master merged
+name: PR to main (or master) opened
 on:
   pull_request:
     branches:
+      - main
       - master
     types:
-      - closed
+      - opened
 jobs:
   test:
-    if: ${{ github.event.pull_request.merged }}
     uses: ./.github/workflows/reusable_test-python.yml
   build-push:
-    if: ${{ github.event.pull_request.merged }}
     needs: test
     uses: ./.github/workflows/reusable_build-push.yml
     with:
       name: '${{ github.event.repository.name }}'
-      tags: latest-rc
+      tags: pr${{ github.event.number }}
     secrets: inherit

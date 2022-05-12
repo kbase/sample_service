@@ -33,6 +33,6 @@ Rel(controller_workflow, reusable_build_push, "uses")
 
 Rel(reusable_build_push, sample_service_image, "creates, pushes")
 
-Rel(reusable_test, coverage_report, "creates")
+Rel(reusable_test, coverage_report, "creates")f
 
 @enduml
