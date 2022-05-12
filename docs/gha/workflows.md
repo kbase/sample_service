@@ -95,12 +95,6 @@ Note that in the diagrams below, only major events are shown. For example, there
   
 Triggered by opening, reopening, or synchronizing a pull request (`opened`, `reopened`, and `synchronize` event) against the `develop` branch. This workflow does not push an image to GHCR.
 
-workflows.md
-
-### `pull-request-develop-merged.yml`  
-
-Triggered by closing and merging a pull request against the `develop` branch. This workflow  creates an image with name `sample_service-develop` and the tag `latest`.
-
 ```mermaid
 sequenceDiagram
     actor Developer
@@ -160,9 +154,11 @@ sequenceDiagram
     GH ->> Developer: show success
 ```
 
-### `pull-request-main-opened.yml`  
-   
-Triggered by opening a pull request (`opened` event)  against the `main` (or legacy `master`) branch. This workflow  creates an image with name `sample_service` and a tag like `pr#`, where `#` is the pull request number.
+![pull request to develop opened sequence diagram](./images/pull-request-develop-sequence.png)
+
+### `pull-request-develop-merged.yml`  
+
+Triggered by closing and merging a pull request against the `develop` branch. This workflow  creates an image with name `sample_service-develop` and the tag `latest`.
 
 ```mermaid
 sequenceDiagram
@@ -174,26 +170,19 @@ sequenceDiagram
     participant GHCR as GitHub Container Registry
     participant CodeCov
     
-    alt Create PR
-        Developer ->> GH: Create PR against develop
-        GH ->> GH: emits event (pull_request opened)
-    else Reopen PR
-        Developer ->> GH: Reopen closed PR
-        GH ->> GH: emits event (pull_request reopened)
-    else Update PR source branch
-        Developer ->> GH: Push commits to source branch for PR
-        GH ->> GH: emits event (pull_request synchronize)
-    end
+    Developer ->> GH: Merge PR into develop 
+    GH ->> GH: emits event (pull_request closed)
+    
+    GH ->> Workflow: Runs (if event matches and merged)
     
     activate Workflow
-    GH ->> Workflow: Runs (if event matches)
     
     Workflow ->> TestWorkflow: Runs
+    activate TestWorkflow
     
     rect rgb(38, 103, 138)
-    note over Workflow,TestWorkflow: Testing
-
-    activate TestWorkflow
+    note over Developer,CodeCov: Testing
+    
     TestWorkflow ->> Workflow : if any test fails (exit with error)
     Workflow ->> GH: if exit with error (terminate workflow)
     GH ->> Developer: show error
@@ -206,7 +195,7 @@ sequenceDiagram
     Workflow ->> BuildWorkflow: Runs
     
     rect rgb(120, 27, 44)
-    note over BuildWorkflow, Workflow: Build and Push Image
+    note over Developer,CodeCov: Build and Push Image
     
     activate BuildWorkflow
     BuildWorkflow ->> BuildWorkflow: build image
@@ -233,12 +222,201 @@ sequenceDiagram
     GH ->> Developer: show success
 ```
 
+![pull request to develop merged sequence diagram](./images/pull-request-develop-merged-sequence.png)
+
+### `pull-request-main-opened.yml`  
+   
+Triggered by opening a pull request (`opened` event)  against the `main` (or legacy `master`) branch. This workflow  creates an image with name `sample_service` and a tag like `pr#`, where `#` is the pull request number.
+
+
+```mermaid
+sequenceDiagram
+    actor Developer
+    participant GH as GitHub UI 
+    participant Workflow as Controlling Workflow 
+    participant TestWorkflow as Reusable Test Workflow 
+    participant BuildWorkflow as Reusable Build/Push Workflow
+    participant GHCR as GitHub Container Registry
+    participant CodeCov
+    
+    Developer ->> GH: Create PR from develop to main 
+    GH ->> GH: emits event (pull_request opened)
+    
+    GH ->> Workflow: Runs (if event matches and merged)
+    
+    activate Workflow
+    
+    Workflow ->> TestWorkflow: Runs
+    activate TestWorkflow
+    
+    rect rgb(38, 103, 138)
+    note over Developer,CodeCov: Testing
+    
+    TestWorkflow ->> Workflow : if any test fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    TestWorkflow ->> CodeCov: sends coverage
+    TestWorkflow ->> Workflow: success
+    deactivate TestWorkflow
+    
+    end
+    
+    Workflow ->> BuildWorkflow: Runs
+    
+    rect rgb(120, 27, 44)
+    note over Developer,CodeCov: Build and Push Image
+    
+    activate BuildWorkflow
+    BuildWorkflow ->> BuildWorkflow: build image
+    BuildWorkflow ->> Workflow: if build fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    
+    BuildWorkflow ->> GHCR: Login (GHCR_USERNAME, GHCR_TOKEN)
+    BuildWorkflow ->> Workflow: if login fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    
+    BuildWorkflow ->> GHCR: push image (sample_service:pr#)
+    BuildWorkflow ->> Workflow:success
+    
+    deactivate BuildWorkflow
+    
+    Workflow ->> GH: success
+    
+    end
+    
+    deactivate Workflow
+    GH ->> Developer: show success
+```
+
 ![pull request main opened sequence diagram](./images/pull-request-main-opened-sequence.png)
 
+```mermaid
+sequenceDiagram
+    actor Developer
+    participant GH as GitHub UI 
+    participant Workflow as Controlling Workflow 
+    participant TestWorkflow as Reusable Test Workflow 
+    participant BuildWorkflow as Reusable Build/Push Workflow
+    participant GHCR as GitHub Container Registry
+    participant CodeCov
+    
+    Developer ->> GH: Pull request from develop to main merged
+    GH ->> GH: emits event (pull_request opened)
+    
+    GH ->> Workflow: Runs (if event matches and merged)
+    
+    activate Workflow
+    
+    Workflow ->> TestWorkflow: Runs
+    activate TestWorkflow
+    
+    rect rgb(38, 103, 138)
+    note over Developer,CodeCov: Testing
+    
+    TestWorkflow ->> Workflow : if any test fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    TestWorkflow ->> CodeCov: sends coverage
+    TestWorkflow ->> Workflow: success
+    deactivate TestWorkflow
+    
+    end
+    
+    Workflow ->> BuildWorkflow: Runs
+    
+    rect rgb(120, 27, 44)
+    note over Developer,CodeCov: Build and Push Image
+    
+    activate BuildWorkflow
+    BuildWorkflow ->> BuildWorkflow: build image
+    BuildWorkflow ->> Workflow: if build fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    
+    BuildWorkflow ->> GHCR: Login (GHCR_USERNAME, GHCR_TOKEN)
+    BuildWorkflow ->> Workflow: if login fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    
+    BuildWorkflow ->> GHCR: push image (sample_service:latest-rc)
+    BuildWorkflow ->> Workflow:success
+    
+    deactivate BuildWorkflow
+    
+    Workflow ->> GH: success
+    
+    end
+    
+    deactivate Workflow
+    GH ->> Developer: show success
+```
 
 ### `pull-request-main-merged.yml`  
    
 Triggered by closing and merging a pull request against the `main` (or legacy `master`) branch. This workflow  creates an image with name `sample_service` and the tag `latest-rc`.
+
+```mermaid
+sequenceDiagram
+    actor Developer
+    participant GH as GitHub UI 
+    participant Workflow as Controlling Workflow 
+    participant TestWorkflow as Reusable Test Workflow 
+    participant BuildWorkflow as Reusable Build/Push Workflow
+    participant GHCR as GitHub Container Registry
+    participant CodeCov
+    
+    Developer ->> GH: Pull request from develop to main merged
+    GH ->> GH: emits event (pull_request opened)
+    
+    GH ->> Workflow: Runs (if event matches and merged)
+    
+    activate Workflow
+    
+    Workflow ->> TestWorkflow: Runs
+    activate TestWorkflow
+    
+    rect rgb(38, 103, 138)
+    note over Developer,CodeCov: Testing
+    
+    TestWorkflow ->> Workflow : if any test fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    TestWorkflow ->> CodeCov: sends coverage
+    TestWorkflow ->> Workflow: success
+    deactivate TestWorkflow
+    
+    end
+    
+    Workflow ->> BuildWorkflow: Runs
+    
+    rect rgb(120, 27, 44)
+    note over Developer,CodeCov: Build and Push Image
+    
+    activate BuildWorkflow
+    BuildWorkflow ->> BuildWorkflow: build image
+    BuildWorkflow ->> Workflow: if build fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    
+    BuildWorkflow ->> GHCR: Login (GHCR_USERNAME, GHCR_TOKEN)
+    BuildWorkflow ->> Workflow: if login fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    
+    BuildWorkflow ->> GHCR: push image (sample_service:latest-rc)
+    BuildWorkflow ->> Workflow:success
+    
+    deactivate BuildWorkflow
+    
+    Workflow ->> GH: success
+    
+    end
+    
+    deactivate Workflow
+    GH ->> Developer: show success
+```
 
 ![pull request main merged sequence diagram](./images/pull-request-main-merged-sequence.png)
 
@@ -247,11 +425,134 @@ Triggered by closing and merging a pull request against the `main` (or legacy `m
    
 Triggered by the creation (`published` event) of a GitHub release against the `main` (or legacy `master`) branch. This workflow creates an image with the name `sample_service` and applies two tags - the release tag, which is typically a semver `#.#.#`, and `latest-rc`
 
+```mermaid
+sequenceDiagram
+    actor Developer
+    participant GH as GitHub UI 
+    participant Workflow as Controlling Workflow 
+    participant TestWorkflow as Reusable Test Workflow 
+    participant BuildWorkflow as Reusable Build/Push Workflow
+    participant GHCR as GitHub Container Registry
+    participant CodeCov
+    
+    Developer ->> GH: Create Release x.y.z against main
+    GH ->> GH: emits event (release published)
+    
+    GH ->> Workflow: Runs (if event matches and merged)
+    
+    activate Workflow
+    
+    Workflow ->> TestWorkflow: Runs
+    activate TestWorkflow
+    
+    rect rgb(38, 103, 138)
+    note over Developer,CodeCov: Testing
+    
+    TestWorkflow ->> Workflow : if any test fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    TestWorkflow ->> CodeCov: sends coverage
+    TestWorkflow ->> Workflow: success
+    deactivate TestWorkflow
+    
+    end
+    
+    Workflow ->> BuildWorkflow: Runs
+    
+    rect rgb(120, 27, 44)
+    note over Developer,CodeCov: Build and Push Image
+    
+    activate BuildWorkflow
+    BuildWorkflow ->> BuildWorkflow: build image
+    BuildWorkflow ->> Workflow: if build fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    
+    BuildWorkflow ->> GHCR: Login (GHCR_USERNAME, GHCR_TOKEN)
+    BuildWorkflow ->> Workflow: if login fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    
+    BuildWorkflow ->> GHCR: push image (sample_service:x.y.z)
+    BuildWorkflow ->> Workflow:success
+    
+    deactivate BuildWorkflow
+    
+    Workflow ->> GH: success
+    
+    end
+    
+    deactivate Workflow
+    GH ->> Developer: show success
+```
+
 ![release against main published sequence diagram](./images/release-main-sequence.png)
 
 
 ### `manual.yml`  
    
 triggered by `workflow_dispatch`, so can be run by the GitHub UI button. It runs both test and image build/push, and a tag which is the branch name. The supports the use case of generating an image from any branch. E.g. in order to preview changes in a feature or fix branch, one may run this workflow specifying a branch which is either the source for a PR or may become one, generating an image that may be previewed and verifying through shared test results that the changes are non-breaking.
+
+
+```mermaid
+sequenceDiagram
+    actor Developer
+    participant GH as GitHub UI 
+    participant Workflow as Controlling Workflow 
+    participant TestWorkflow as Reusable Test Workflow 
+    participant BuildWorkflow as Reusable Build/Push Workflow
+    participant GHCR as GitHub Container Registry
+    participant CodeCov
+    
+    Developer ->> GH: Press "Run workflow" button, select branch BRANCH
+    GH ->> GH: emits event (workflow_dispatch)
+    
+    GH ->> Workflow: Runs (if event matches)
+    
+    activate Workflow
+    
+    Workflow ->> TestWorkflow: Runs
+    activate TestWorkflow
+    
+    rect rgb(38, 103, 138)
+    note over Developer,CodeCov: Testing
+    
+    TestWorkflow ->> Workflow : if any test fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    TestWorkflow ->> CodeCov: sends coverage
+    TestWorkflow ->> Workflow: success
+    deactivate TestWorkflow
+    
+    end
+    
+    Workflow ->> BuildWorkflow: Runs
+    
+    rect rgb(120, 27, 44)
+    note over Developer,CodeCov: Build and Push Image
+    
+    activate BuildWorkflow
+    BuildWorkflow ->> BuildWorkflow: build image
+    BuildWorkflow ->> Workflow: if build fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    
+    BuildWorkflow ->> GHCR: Login (GHCR_USERNAME, GHCR_TOKEN)
+    BuildWorkflow ->> Workflow: if login fails (exit with error)
+    Workflow ->> GH: if exit with error (terminate workflow)
+    GH ->> Developer: show error
+    
+    BuildWorkflow ->> GHCR: push image (sample_service:BRANCH)
+    BuildWorkflow ->> Workflow:success
+    
+    deactivate BuildWorkflow
+    
+    Workflow ->> GH: success
+    
+    end
+    
+    deactivate Workflow
+    GH ->> Developer: show success
+```
 
 ![manual sequence diagram](./images/manual-sequence.png)
