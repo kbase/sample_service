@@ -154,8 +154,6 @@ sequenceDiagram
     GH ->> Developer: show success
 ```
 
-![pull request to develop opened sequence diagram](./images/pull-request-develop-sequence.png)
-
 ### `pull-request-develop-merged.yml`  
 
 Triggered by closing and merging a pull request against the `develop` branch. This workflow  creates an image with name `sample_service-develop` and the tag `latest`.
@@ -222,12 +220,9 @@ sequenceDiagram
     GH ->> Developer: show success
 ```
 
-![pull request to develop merged sequence diagram](./images/pull-request-develop-merged-sequence.png)
-
 ### `pull-request-main-opened.yml`  
    
 Triggered by opening a pull request (`opened` event)  against the `main` (or legacy `master`) branch. This workflow  creates an image with name `sample_service` and a tag like `pr#`, where `#` is the pull request number.
-
 
 ```mermaid
 sequenceDiagram
@@ -290,68 +285,6 @@ sequenceDiagram
     GH ->> Developer: show success
 ```
 
-![pull request main opened sequence diagram](./images/pull-request-main-opened-sequence.png)
-
-```mermaid
-sequenceDiagram
-    actor Developer
-    participant GH as GitHub UI 
-    participant Workflow as Controlling Workflow 
-    participant TestWorkflow as Reusable Test Workflow 
-    participant BuildWorkflow as Reusable Build/Push Workflow
-    participant GHCR as GitHub Container Registry
-    participant CodeCov
-    
-    Developer ->> GH: Pull request from develop to main merged
-    GH ->> GH: emits event (pull_request opened)
-    
-    GH ->> Workflow: Runs (if event matches and merged)
-    
-    activate Workflow
-    
-    Workflow ->> TestWorkflow: Runs
-    activate TestWorkflow
-    
-    rect rgb(38, 103, 138)
-    note over Developer,CodeCov: Testing
-    
-    TestWorkflow ->> Workflow : if any test fails (exit with error)
-    Workflow ->> GH: if exit with error (terminate workflow)
-    GH ->> Developer: show error
-    TestWorkflow ->> CodeCov: sends coverage
-    TestWorkflow ->> Workflow: success
-    deactivate TestWorkflow
-    
-    end
-    
-    Workflow ->> BuildWorkflow: Runs
-    
-    rect rgb(15, 98, 72)
-    note over Developer,CodeCov: Build and Push Image
-    
-    activate BuildWorkflow
-    BuildWorkflow ->> BuildWorkflow: build image
-    BuildWorkflow ->> Workflow: if build fails (exit with error)
-    Workflow ->> GH: if exit with error (terminate workflow)
-    GH ->> Developer: show error
-    
-    BuildWorkflow ->> GHCR: Login (GHCR_USERNAME, GHCR_TOKEN)
-    BuildWorkflow ->> Workflow: if login fails (exit with error)
-    Workflow ->> GH: if exit with error (terminate workflow)
-    GH ->> Developer: show error
-    
-    BuildWorkflow ->> GHCR: push image (sample_service:latest-rc)
-    BuildWorkflow ->> Workflow:success
-    
-    deactivate BuildWorkflow
-    
-    Workflow ->> GH: success
-    
-    end
-    
-    deactivate Workflow
-    GH ->> Developer: show success
-```
 
 ### `pull-request-main-merged.yml`  
    
@@ -418,9 +351,6 @@ sequenceDiagram
     GH ->> Developer: show success
 ```
 
-![pull request main merged sequence diagram](./images/pull-request-main-merged-sequence.png)
-
-
 ### `release-main`  
    
 Triggered by the creation (`published` event) of a GitHub release against the `main` (or legacy `master`) branch. This workflow creates an image with the name `sample_service` and applies two tags - the release tag, which is typically a semver `#.#.#`, and `latest-rc`
@@ -486,13 +416,9 @@ sequenceDiagram
     GH ->> Developer: show success
 ```
 
-![release against main published sequence diagram](./images/release-main-sequence.png)
-
-
 ### `manual.yml`  
    
 triggered by `workflow_dispatch`, so can be run by the GitHub UI button. It runs both test and image build/push, and a tag which is the branch name. The supports the use case of generating an image from any branch. E.g. in order to preview changes in a feature or fix branch, one may run this workflow specifying a branch which is either the source for a PR or may become one, generating an image that may be previewed and verifying through shared test results that the changes are non-breaking.
-
 
 ```mermaid
 sequenceDiagram
@@ -554,5 +480,3 @@ sequenceDiagram
     deactivate Workflow
     GH ->> Developer: show success
 ```
-
-![manual sequence diagram](./images/manual-sequence.png)
