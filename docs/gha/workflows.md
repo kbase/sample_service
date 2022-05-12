@@ -121,7 +121,7 @@ sequenceDiagram
     Workflow ->> TestWorkflow: Runs
     
     rect rgb(38, 103, 138)
-    note over Workflow,TestWorkflow: Testing
+    note over Developer,CodeCov: Testing
 
     activate TestWorkflow
     TestWorkflow ->> Workflow : if any test fails (exit with error)
@@ -135,8 +135,8 @@ sequenceDiagram
     
     Workflow ->> BuildWorkflow: Runs
     
-    rect rgb(120, 27, 44)
-    note over BuildWorkflow, Workflow: Build Image
+    rect rgb(15, 98, 72)
+    note over Developer,CodeCov: Build Image
     
     activate BuildWorkflow
     BuildWorkflow ->> BuildWorkflow: build image
@@ -194,7 +194,7 @@ sequenceDiagram
     
     Workflow ->> BuildWorkflow: Runs
     
-    rect rgb(120, 27, 44)
+    rect rgb(15, 98, 72)
     note over Developer,CodeCov: Build and Push Image
     
     activate BuildWorkflow
@@ -263,7 +263,7 @@ sequenceDiagram
     
     Workflow ->> BuildWorkflow: Runs
     
-    rect rgb(120, 27, 44)
+    rect rgb(15, 98, 72)
     note over Developer,CodeCov: Build and Push Image
     
     activate BuildWorkflow
@@ -326,7 +326,7 @@ sequenceDiagram
     
     Workflow ->> BuildWorkflow: Runs
     
-    rect rgb(120, 27, 44)
+    rect rgb(15, 98, 72)
     note over Developer,CodeCov: Build and Push Image
     
     activate BuildWorkflow
@@ -391,7 +391,7 @@ sequenceDiagram
     
     Workflow ->> BuildWorkflow: Runs
     
-    rect rgb(120, 27, 44)
+    rect rgb(15, 98, 72)
     note over Developer,CodeCov: Build and Push Image
     
     activate BuildWorkflow
@@ -459,7 +459,7 @@ sequenceDiagram
     
     Workflow ->> BuildWorkflow: Runs
     
-    rect rgb(120, 27, 44)
+    rect rgb(15, 98, 72)
     note over Developer,CodeCov: Build and Push Image
     
     activate BuildWorkflow
@@ -528,7 +528,7 @@ sequenceDiagram
     
     Workflow ->> BuildWorkflow: Runs
     
-    rect rgb(120, 27, 44)
+    rect rgb(15, 98, 72)
     note over Developer,CodeCov: Build and Push Image
     
     activate BuildWorkflow
