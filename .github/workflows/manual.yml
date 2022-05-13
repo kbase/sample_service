@@ -10,4 +10,4 @@ jobs:
     uses: ./.github/workflows/reusable_build-push.yml
     with:
       name: '${{ github.repository }}'
-      tags: '${{ github.ref_name }}'
+      tags: 'br-${{ github.ref_name }}'
