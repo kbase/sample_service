@@ -8,6 +8,7 @@ jobs:
   build-push:
     needs: test
     uses: ./.github/workflows/reusable_build-push.yml
+    secrets: inherit
     with:
-      name: '${{ github.repository }}'
+      name: '${{ github.event.repository.name }}'
       tags: 'br-${{ github.ref_name }}'
