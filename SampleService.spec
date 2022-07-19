@@ -50,6 +50,18 @@ module SampleService {
      */
     typedef string metadata_value_key;
 
+    /* A workspace type string.
+        Specifies the workspace data type a single string in the format
+        [module].[typename]:
+
+        module - a string. The module name of the typespec containing the type.
+        typename - a string. The name of the type as assigned by the typedef
+            statement.
+
+        Example: KBaseSets.SampleSet
+    */
+    typedef string ws_type_string;
+
     /* A metadata value, represented by a mapping of value keys to primitive values. An example for
         a location metadata key might be:
         {
@@ -261,6 +273,25 @@ module SampleService {
     /* Update a sample's ACLs.  */
      funcdef update_sample_acls(UpdateSampleACLsParams params) returns() authentication required;
 
+    /* update_samples_acls parameters.
+
+        These parameters are the same as update_sample_acls, except:
+        ids - a list of IDs of samples to modify.
+    */
+    typedef structure {
+        list<sample_id> ids;
+        list<user> admin;
+        list<user> write;
+        list<user> read;
+        list<user> remove;
+        int public_read;
+        boolean at_least;
+        boolean as_admin;
+    } UpdateSamplesACLsParams;
+
+    /* Update the ACLs of many samples.  */
+     funcdef update_samples_acls(UpdateSamplesACLsParams params) returns() authentication required;
+
     /* replace_sample_acls parameters.
 
         id - the ID of the sample to modify.
@@ -304,7 +335,7 @@ module SampleService {
     } GetMetadataKeyStaticMetadataResults;
 
     /* Get static metadata for one or more metadata keys.
-    
+
         The static metadata for a metadata key is metadata *about* the key - e.g. it may
         define the key's semantics or denote that the key is linked to an ontological ID.
 
@@ -316,7 +347,7 @@ module SampleService {
         returns(GetMetadataKeyStaticMetadataResults results) authentication none;
 
     /* create_data_link parameters.
-    
+
         upa - the workspace UPA of the object to be linked.
         dataid - the dataid of the data to be linked, if any, within the object. If omitted the
             entire object is linked to the sample.
@@ -345,7 +376,7 @@ module SampleService {
     } CreateDataLinkParams;
 
     /* A data link from a KBase workspace object to a sample.
-    
+
         upa - the workspace UPA of the linked object.
         dataid - the dataid of the linked data, if any, within the object. If omitted the
             entire object is linked to the sample.
@@ -386,6 +417,51 @@ module SampleService {
     funcdef create_data_link(CreateDataLinkParams params) returns(CreateDataLinkResults results)
         authentication required;
 
+    /* propagate_data_links parameters.
+
+        id - the sample id.
+        version - the sample version. (data links are propagated to)
+        previous_version - the previouse sample version. (data links are propagated from)
+        ignore_types - the workspace data type ignored from propagating. default empty.
+        update - if false (the default), fail if a link already exists from the data unit (the
+            combination of the UPA and dataid). if true, expire the old link and create the new
+            link unless the link is already to the requested sample node, in which case the
+            operation is a no-op.
+        effective_time - the effective time at which the query should be run - the default is
+            the current time. Providing a time allows for reproducibility of previous results.
+        as_admin - run the method as a service administrator. The user must have full
+            administration permissions.
+        as_user - create the link as a different user. Ignored if as_admin is not true. Neither
+            the administrator nor the impersonated user need have permissions to the data or
+            sample.
+        */
+    typedef structure {
+        sample_id id;
+        version version;
+        version previous_version;
+        list<ws_type_string> ignore_types;
+        boolean update;
+        timestamp effective_time;
+        boolean as_admin;
+        user as_user;
+    } PropagateDataLinkParams;
+
+    /* propagate_data_links results.
+
+        links - the links.
+     */
+    typedef structure {
+        list<DataLink> links;
+    } PropagateDataLinkResults;
+
+    /* Propagates data links from a previous sample to the current (latest) version
+
+        The user must have admin permissions for the sample and write permissions for the
+        Workspace object.
+     */
+    funcdef propagate_data_links(PropagateDataLinkParams params) returns(PropagateDataLinkResults results)
+        authentication required;
+
     /* expire_data_link parameters.
 
         upa - the workspace upa of the object from which the link originates.
@@ -405,7 +481,7 @@ module SampleService {
     } ExpireDataLinkParams;
 
     /* Expire a link from a KBase Workspace object.
-    
+
         The user must have admin permissions for the sample and write permissions for the
         Workspace object.
     */
@@ -445,6 +521,31 @@ module SampleService {
         can read are returned.
      */
     funcdef get_data_links_from_sample(GetDataLinksFromSampleParams params)
+        returns(GetDataLinksFromSampleResults results) authentication optional;
+
+    /* get_data_links_from_sample_set parameters.
+        sample_ids - a list of sample ids and versions
+        effective_time - the time at which the query was run. This timestamp, if saved, can be
+            used when running the method again to enqure reproducible results. Note that changes
+            to workspace permissions may cause results to change over time.
+        as_admin - run the method as a service administrator. The user must have read
+            administration permissions.
+    */
+
+    typedef structure {
+        list<SampleIdentifier> sample_ids;
+        timestamp effective_time;
+        boolean as_admin;
+    } GetDataLinksFromSampleSetParams;
+
+    /* Get all workspace object metadata linked to samples in a list of samples or sample set
+        refs. Returns metadata about links to data objects. A batch version of
+        get_data_links_from_sample.
+
+        The user must have read permissions to the sample. A permissions error is thrown when a
+        sample is found that the user has no access to.
+    */
+    funcdef get_data_links_from_sample_set(GetDataLinksFromSampleSetParams params)
         returns(GetDataLinksFromSampleResults results) authentication optional;
 
     /* get_data_links_from_data parameters.

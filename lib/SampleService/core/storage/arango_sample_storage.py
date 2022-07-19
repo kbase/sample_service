@@ -250,7 +250,8 @@ class ArangoSampleStorage:
             db, schema_collection, 'schema collection', 'schema_collection')
         self._ensure_indexes()
         self._check_schema()
-        self._deletion_delay = datetime.timedelta(hours=1)  # make configurable?
+        self._reaper_deletion_delay = datetime.timedelta(hours=1)  # make configurable?
+        self._reaper_update_delay = datetime.timedelta(minutes=5)  # make configurable?
         self._check_db_updated()
         self._scheduler = self._build_scheduler()
 
@@ -322,6 +323,10 @@ class ArangoSampleStorage:
                     # the sample document was never saved for this version doc
                     self._delete_version_and_node_docs(uver, ts)
                 else:
+                    # Do not update this document if it was last updated less than _reaper_update_delay ago
+                    # this is to avoid writing to a document in the process of being created
+                    if self._now() - ts < self._reaper_update_delay:
+                        continue
                     version = self._get_int_version_from_sample_doc(sampledoc, str(uver))
                     if version:
                         self._update_version_and_node_docs_with_find(id_, uver, version)
@@ -338,8 +343,8 @@ class ArangoSampleStorage:
         return None
 
     def _delete_version_and_node_docs(self, uuidver, savedate):
-        if self._now() - savedate > self._deletion_delay:
-            print('deleting docs', self._now(), savedate, self._deletion_delay)
+        if self._now() - savedate > self._reaper_deletion_delay:
+            print('deleting docs', self._now(), savedate, self._reaper_deletion_delay)
             try:
                 # TODO logging
                 # delete edge docs first to ensure we don't orphan them
@@ -665,23 +670,89 @@ class ArangoSampleStorage:
         '''
         ids_: list of dictionaries containing "id" and "version" field.
         '''
-        docs, verdocs, versions = self._get_many_sample_and_version_doc(ids_)
-        samples = []
-        for id_tup in ids_:
-            id_ = str(id_tup['id'])
-            verdoc = verdocs[id_]
-            nodes = self._get_nodes(UUID(id_), UUID(verdoc[_FLD_NODE_UUID_VER]), versions[id_])
-            doc = docs[id_]
-            version = versions[id_]
+        aql = '''
+            // Extract the ids from the input.
+            LET ids = (
+                FOR idver IN @ids
+                RETURN idver.id
+            )
+            // Create a lookup table by id to select desired versions.
+            LET verlookup = MERGE(
+                FOR idver in @ids
+                RETURN {[idver.id]: idver.version}
+            )
+            // Filter first to optimize aggregation.
+            LET svs = (
+                FOR sv IN @@version
+                    FILTER sv.id IN ids
+                    RETURN sv
+            )
+            // Select the specified version of each sample.
+            LET partials = (
+                FOR sv IN svs
+                    FILTER sv.ver == verlookup[sv.id]
+                    RETURN {
+                        id: sv.id,
+                        version: sv.ver,
+                        verdoc: sv.uuidver,
+                        version_record: sv
+                    }
+            )
+            // For each sample, traverse and collect node trees.
+            LET node_trees = (
+                FOR startVertex IN @@nodes
+                    FILTER startVertex.id IN ids
+                    FOR v IN ANY startVertex @@nodes_edge
+                        FILTER v.index >= 0
+                        SORT v.index
+                        COLLECT nid = v.id INTO ns
+                        RETURN {[nid]: UNIQUE(ns[*].v)}
+            )
+            // Include node trees in samples.
+            FOR partial in partials
+                FOR node in @@nodes
+                    FILTER node.uuidver == partial.verdoc
+                        AND node.parent == NULL
+                    RETURN MERGE(partial, {
+                        "node_tree": MERGE(node_trees)[node.id] OR [node]
+                    })
+        '''
+        # Convert UUID to strings.
+        for id_ in ids_:
+            id_['id'] = str(id_['id'])
+
+        aql_bind = {
+            'ids': ids_,
+            '@nodes': self._col_nodes.name,
+            '@nodes_edge': self._col_node_edge.name,
+            '@version': self._col_version.name
+        }
+        # Convert arango doc structure into SavedSample.
+        results = {}
+        for doc in self._db.aql.execute(aql, bind_vars=aql_bind):
+            node_tree = [
+                _SampleNode(
+                    node[_FLD_NODE_NAME],
+                    _SubSampleType[node[_FLD_NODE_TYPE]],
+                    node[_FLD_NODE_PARENT],
+                    self._list_to_meta(node[_FLD_NODE_CONTROLLED_METADATA]),
+                    self._list_to_meta(node[_FLD_NODE_UNCONTROLLED_METADATA]),
+                    self._list_to_source_meta(node.get(_FLD_NODE_SOURCE_METADATA, [])),
+                )
+                for node in doc['node_tree']
+            ]
+            verdoc = doc['version_record']
             dt = self._timestamp_to_datetime(
                 self._timestamp_milliseconds_to_seconds(verdoc[_FLD_SAVE_TIME])
             )
-            samples.append(SavedSample(
-                UUID(doc[_FLD_ID]),
+            docid = doc[_FLD_ID]
+            results[docid] = SavedSample(
+                UUID(docid),
                 UserID(verdoc[_FLD_USER]),
-                nodes, dt, verdoc[_FLD_NAME], version
-            ))
-        return samples
+                node_tree, dt, verdoc[_FLD_NAME], doc['version']
+            )
+        # Return samples in the order they were requested.
+        return [results[id_['id']] for id_ in ids_]
 
     def _get_sample_and_version_doc(
             self, id_: UUID, version: Optional[int] = None) -> Tuple[dict, dict, int]:
@@ -849,6 +920,29 @@ class ArangoSampleStorage:
             # allow None for backwards compability with DB entries missing the key
             acls.get(_FLD_PUBLIC_READ))
 
+    def get_sample_set_acls(self, ids_: List[UUID]) -> List[SampleACL]:
+        # function to ensure docs are sorted correctly
+        str_ids = [str(id_) for id_ in ids_]
+        def _keyfunc(doc):
+            return str_ids.index(doc[_FLD_ARANGO_KEY])
+        # have to cast this way for compatibility with _get_many_sample_doc
+        docs = self._get_many_sample_doc([{'id': str_id} for str_id in str_ids])
+        # sort docs (ensure that the right id is raised for errors)
+        sorted_docs = sorted(docs, key=_keyfunc)
+        sample_acls = []
+        for doc in docs:
+            acls = doc[_FLD_ACLS]
+            sample_acls.append(SampleACL(
+                UserID(acls[_FLD_OWNER]),
+                self._timestamp_to_datetime(doc[_FLD_ACL_UPDATE_TIME]),
+                [UserID(u) for u in acls[_FLD_ADMIN]],
+                [UserID(u) for u in acls[_FLD_WRITE]],
+                [UserID(u) for u in acls[_FLD_READ]],
+                acls.get(_FLD_PUBLIC_READ)
+            ))
+
+        return sample_acls
+
     def replace_sample_acls(self, id_: UUID, acls: SampleACL):
         '''
         Completely replace a sample's ACLs.
@@ -878,7 +972,7 @@ class ArangoSampleStorage:
                 UPDATE s WITH {{{_FLD_ACLS}: MERGE(s.{_FLD_ACLS}, @acls),
                                 {_FLD_ACL_UPDATE_TIME}: @ts
                                 }} IN @@col
-                RETURN s
+                RETURN NEW
             '''
         bind_vars = {'@col': self._col_sample.name,
                      'id': str(id_),
@@ -1004,7 +1098,7 @@ class ArangoSampleStorage:
         aql += '''
                         }
                     } IN @@col
-                RETURN s
+                RETURN NEW
             '''
 
         try:
@@ -1481,6 +1575,68 @@ class ArangoSampleStorage:
         except _arango.exceptions.AQLQueryExecuteError as e:  # this is a pain to test
             raise _SampleStorageError('Connection to database failed: ' + str(e)) from e
         return duids  # a maxium of 10k can be returned based on the link creation function
+
+    def get_batch_links_from_samples(self,
+                                     samples: List[SampleAddress],
+                                     readable_wsids: Optional[List[int]],
+                                     timestamp: datetime.datetime) -> List[DataLink]:
+        '''
+        Get the links from a bulk list of samples at a particular time.
+
+        :param samples: the samples of interest.
+        :param readable_wsids: IDs of workspaces for which the user has read permissions.
+            Pass None to return links to objects in all workspaces.
+        :param timestamp: the time to use to determine which links are active.
+        :returns: a list of links.
+        :raises SampleStorageError: if a conection to the database fails.
+        '''
+
+        _not_falsy(samples, 'samples')
+        _check_timestamp(timestamp, 'timestamp')
+
+        aql_bind = {
+            '@sample_col': self._col_sample.name,
+            '@link_col': self._col_data_link.name,
+            # cast SampleAddress to dict
+            'sample_ids': [{'id': str(s.sampleid), 'version': s.version} for s in samples],
+            'ts': self._timestamp_seconds_to_milliseconds(timestamp.timestamp())
+        }
+
+        wsidfilter = ''
+        if readable_wsids:
+            aql_bind['wsids'] = readable_wsids
+            wsidfilter = f'FILTER d.{_FLD_LINK_WORKSPACE_ID} IN @wsids'
+
+        q = f'''
+            LET version_ids = (FOR sample_id IN @sample_ids
+                LET doc = DOCUMENT(@@sample_col, sample_id.id)
+                RETURN {{
+                    'id': doc.id,
+                    'version_id': doc.vers[sample_id.version - 1],
+                    'version': sample_id.version
+                }}
+            )
+
+            LET data_links = (FOR version_id IN version_ids
+                FOR d in @@link_col
+                    FILTER d.{_FLD_LINK_SAMPLE_UUID_VERSION} == version_id.version_id
+                    {wsidfilter}
+                    FILTER d.{_FLD_LINK_CREATED} <= @ts
+                    FILTER d.{_FLD_LINK_EXPIRED} >= @ts
+                    RETURN d
+            )
+            RETURN data_links
+        '''
+
+        duids = []
+        try:
+            # have to unwrap query result twice because its a nested array
+            for link_set in self._db.aql.execute(q, bind_vars=aql_bind):
+                for link in link_set:
+                    duids.append(self._doc_to_link(link))
+        except _arango.exceptions.AQLQueryExecuteError as e:
+            raise _SampleStorageError('Connection to database failed: ' + str(e)) from e
+        return duids
 
     def get_links_from_data(self, upa: UPA, timestamp: datetime.datetime) -> List[DataLink]:
         '''

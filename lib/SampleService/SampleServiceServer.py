@@ -49,7 +49,6 @@ def get_config():
         retconfig[nameval[0]] = nameval[1]
     return retconfig
 
-
 config = get_config()
 
 from SampleService.SampleServiceImpl import SampleService  # noqa @IgnorePep8
@@ -356,7 +355,6 @@ class Application(object):
                              name='SampleService.get_samples',
                              types=[dict])
         self.method_authentication['SampleService.get_samples'] = 'optional'  # noqa
-
         self.rpc_service.add(impl_SampleService.get_sample_acls,
                              name='SampleService.get_sample_acls',
                              types=[dict])
@@ -365,6 +363,10 @@ class Application(object):
                              name='SampleService.update_sample_acls',
                              types=[dict])
         self.method_authentication['SampleService.update_sample_acls'] = 'required'  # noqa
+        self.rpc_service.add(impl_SampleService.update_samples_acls,
+                             name='SampleService.update_samples_acls',
+                             types=[dict])
+        self.method_authentication['SampleService.update_samples_acls'] = 'required'  # noqa
         self.rpc_service.add(impl_SampleService.replace_sample_acls,
                              name='SampleService.replace_sample_acls',
                              types=[dict])
@@ -377,6 +379,10 @@ class Application(object):
                              name='SampleService.create_data_link',
                              types=[dict])
         self.method_authentication['SampleService.create_data_link'] = 'required'  # noqa
+        self.rpc_service.add(impl_SampleService.propagate_data_links,
+                             name='SampleService.propagate_data_links',
+                             types=[dict])
+        self.method_authentication['SampleService.propagate_data_links'] = 'required'  # noqa
         self.rpc_service.add(impl_SampleService.expire_data_link,
                              name='SampleService.expire_data_link',
                              types=[dict])
@@ -385,6 +391,10 @@ class Application(object):
                              name='SampleService.get_data_links_from_sample',
                              types=[dict])
         self.method_authentication['SampleService.get_data_links_from_sample'] = 'optional'  # noqa
+        self.rpc_service.add(impl_SampleService.get_data_links_from_sample_set,
+                             name='SampleService.get_data_links_from_sample_set',
+                             types=[dict])
+        self.method_authentication['SampleService.get_data_links_from_sample_set'] = 'optional'  # noqa
         self.rpc_service.add(impl_SampleService.get_data_links_from_data,
                              name='SampleService.get_data_links_from_data',
                              types=[dict])
@@ -397,13 +407,13 @@ class Application(object):
                              name='SampleService.get_data_link',
                              types=[dict])
         self.method_authentication['SampleService.get_data_link'] = 'required'  # noqa
-        self.rpc_service.add(impl_SampleService.status,
-                             name='SampleService.status',
-                             types=[dict])
         self.rpc_service.add(impl_SampleService.validate_samples,
                              name='SampleService.validate_samples',
                              types=[dict])
-        self.method_authentication['SampleService.validate_samples'] = 'optional'  # noqa
+        self.method_authentication['SampleService.validate_samples'] = 'required'  # noqa
+        self.rpc_service.add(impl_SampleService.status,
+                             name='SampleService.status',
+                             types=[dict])
         authurl = config.get(AUTH) if config else None
         self.auth_client = _KBaseAuth(authurl)
 
@@ -546,7 +556,6 @@ class Application(object):
                         60)
         return "%s%+02d:%02d" % (dtnow.isoformat(), hh, mm)
 
-
 application = Application()
 
 # This is the uwsgi application dictionary. On startup uwsgi will look
@@ -657,7 +666,6 @@ def process_async_cli(input_file_path, output_file_path, token):
     with open(output_file_path, "w") as f:
         f.write(json.dumps(resp, cls=JSONObjectEncoder))
     return exit_code
-
 
 if __name__ == "__main__":
     if (len(sys.argv) >= 3 and len(sys.argv) <= 4 and

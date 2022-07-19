@@ -67,12 +67,18 @@ data-link-collection = {{ default .Env.data_link_collection "samples_data_link" 
 workspace-object-version-shadow-collection = {{ default .Env.workspace_object_version_shadow_collection "ws_object_version" }}
 schema-collection = {{ default .Env.schema_collection "samples_schema" }}
 
-# A URL pointing to a configuration file for any metadata validators to be installed on startup.
-# See the readme file for a description of the file contents.
+# A relative github path pointing to a configuration repo for any metadata validators to be installed on startup.
+# In the form of a github repo path, e.g. `kbase/sample_service_validator_config`
+# See the readme file for a description of the repo contents.
 metadata-validator-config-repo = {{ default .Env.metadata_validator_config_repo "kbase/sample_service_validator_config" }}
+# Release assest filename to use for the metadata validator config
 metadata-validator-config-filename = {{ default .Env.metadata_validator_config_filename "metadata_validation.yml" }}
+# Wether or not to consider prereleases when looking for the metadata validator config release asset.
 metadata-validator-config-prerelease = {{ default .Env.metadata_validator_config_repo "0" }}
+# overrides the default metadata validator config repo and provides a direct download url to the metadata validator config.
 metadata-validator-config-url = {{ default .Env.metadata_validator_config_url "" }}
+# Provides a github token for authorizing validation downloads. 
+# Improves rate limiting dramatically, but optional for public config repos
 github-token = {{ default .Env.github_token "" }}
 
 # Parameters for Kafka notifications.
