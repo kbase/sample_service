@@ -74,7 +74,7 @@ metadata-validator-config-repo = {{ default .Env.metadata_validator_config_repo 
 # Release assest filename to use for the metadata validator config
 metadata-validator-config-filename = {{ default .Env.metadata_validator_config_filename "metadata_validation.yml" }}
 # Wether or not to consider prereleases when looking for the metadata validator config release asset.
-metadata-validator-config-prerelease = {{ default .Env.metadata_validator_config_repo "0" }}
+metadata-validator-config-prerelease = {{ default .Env.metadata_validator_config_prerelease "0" }}
 # overrides the default metadata validator config repo and provides a direct download url to the metadata validator config.
 metadata-validator-config-url = {{ default .Env.metadata_validator_config_url "" }}
 # Provides a github token for authorizing validation downloads. 
