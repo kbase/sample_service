@@ -8,7 +8,7 @@ Configuration parsing and creation for the sample service.
 import importlib
 from typing import Dict, Optional, List, Tuple
 from typing import cast as _cast
-import urllib as _urllib
+import urllib.request as request
 from urllib.error import URLError as _URLError
 import yaml as _yaml
 from yaml.parser import ParserError as _ParserError
@@ -255,11 +255,11 @@ def get_validators(repo_path: Optional[str] = None, repo_file: Optional[str] = N
                 raise ValueError(f'No config asset found in validator config repo {repo_path}')
             config_url = config_asset.url
 
-        req = _urllib.request.Request(config_url)
+        req = request.Request(config_url)
         req.add_header('Accept', 'application/octet-stream')
         if token:
             req.add_header('Authorization', f'token {token}')
-        with _urllib.request.urlopen(req) as response:
+        with request.urlopen(req) as response:
             cfg = _yaml.safe_load(response)
 
     except _URLError as e:
