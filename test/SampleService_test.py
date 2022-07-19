@@ -47,7 +47,7 @@ from kafka_controller import KafkaController
 # TODO should really test a start up for the case where the metadata validation config is not
 # supplied, but that's almost never going to be the case and the code is trivial, so YAGNI
 
-VER = '0.2.1'
+VER = '0.2.5'
 
 _AUTH_DB = 'test_auth_db'
 _WS_DB = 'test_ws_db'
@@ -879,6 +879,21 @@ def _create_sample_version_as_admin(sample_port, as_user, expected_user):
                        }]
     }
 
+
+def test_get_samples_fail_no_samples(sample_port):
+    _test_get_samples_fail(sample_port, None,
+        'Missing or incorrect "samples" field - must provide a list of samples to retrieve.')
+
+    _test_get_samples_fail(sample_port, "im a random sample id string!",
+        'Missing or incorrect "samples" field - must provide a list of samples to retrieve.')
+
+    _test_get_samples_fail(sample_port, [],
+        'Cannot provide empty list of samples - must provide at least one sample to retrieve.')
+
+
+def _test_get_samples_fail(sample_port, samples, message):
+    params = {'samples': samples}
+    _request_fail(sample_port, 'get_samples', TOKEN1, params, message)
 
 def test_get_sample_public_read(sample_port):
     url = f'http://localhost:{sample_port}'
