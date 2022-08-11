@@ -242,8 +242,8 @@ def get_validators(repo_path: Optional[str] = None, repo_file: Optional[str] = N
             try: 
                 repo = _Github(login_or_token=token).get_repo(repo_path)
                 releases = [rel for rel in repo.get_releases() if prerelease_ok or not rel.prerelease]
-            except:
-                raise RuntimeError(f'Fetching releases from repo {repo_path} failed.')
+            except Exception as e:
+                raise RuntimeError(f'Fetching releases from repo {repo_path} failed.') from e
             if not releases:
                 raise ValueError(f'No releases found in validator config repo {repo_path}')
             latest_release = releases[0] # max(releases, key=lambda rel: rel.created_at)
