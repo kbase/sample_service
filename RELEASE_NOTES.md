@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* add option to specify a repo and asset name for the validation config, rather than a url, which dowloads that asset via the github API
+
 ## 0.2.5
 
 * organize documentation under a single `docs` directory; add some additional documentation and placeholders  [SAM-209]
