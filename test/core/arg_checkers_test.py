@@ -1,7 +1,8 @@
 import datetime
 from pytest import raises
 from core.test_utils import assert_exception_correct
-from SampleService.core.arg_checkers import check_string, not_falsy, not_falsy_in_iterable
+from SampleService.core.arg_checkers import \
+    check_string, check_bool, not_falsy, not_falsy_in_iterable
 from SampleService.core.arg_checkers import check_timestamp
 from SampleService.core.errors import MissingParameterError, IllegalParameterError
 
@@ -103,6 +104,35 @@ def test_check_string_long_fail():
             check_string(string, 'var name', max_len=length)
         assert_exception_correct(
             got.value, IllegalParameterError(f'var name exceeds maximum length of {length}'))
+
+def test_check_bool():
+    testItems={
+        'true':True,
+        'Yes ':True,
+        '     Y':True,
+        ' 1':True,
+        '  FALSE  ':False,
+        'no   ':False,
+        '  n':False,
+        '0 ':False,
+        None:None,
+        '  ':None
+    }
+    for string, expected in testItems.items():
+        assert check_bool(string, 'name', optional=True) == expected
+
+def test_check_bool_fail_nonoptional():
+    with raises(Exception) as got:
+        check_bool(None, 'name') 
+    assert_exception_correct(got.value, MissingParameterError('name'))
+
+def test_check_bool_fail_bad_val():
+    with raises(Exception) as got:
+        check_bool('maybe', 'name') 
+    assert_exception_correct(got.value, 
+        IllegalParameterError('{} is an invalid value {}'.format('name', 'maybe'))
+    )
+
 
 
 def _dt(timestamp):
