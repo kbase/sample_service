@@ -307,12 +307,18 @@ def get_validators(
 
     except _URLError as e:
         if config_asset:
-            raise ValueError(f'Error downloading config asset from {config_asset.url}: {str(e.reason)}') from e
+            raise ValueError(f'Error downloading config asset from repo {repo_path} \
+                tag {tag} asset {config_asset.url}: {str(e.reason)}') from e
         else:
-            raise ValueError(f'Error downloading config asset from {url or repo_path}: {str(e.reason)}') from e
+            raise ValueError(f'Error downloading config asset from {url}: {str(e.reason)}') from e
     except _ParserError as e:
-        raise ValueError(
-            f'Failed to open validator configuration file from {url or repo_path}: {str(e)}') from e
+        if config_asset:
+            raise ValueError(
+                f'Failed to open validator configuration file from repo {repo_path} \
+                    tag {tag} asset {config_asset.url}: {str(e)}') from e
+        else:
+            raise ValueError(
+                f'Failed to open validator configuration file from {url}: {str(e)}') from e
 
     _validate(instance=cfg, schema=_META_VAL_JSONSCHEMA)
 
