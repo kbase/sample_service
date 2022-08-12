@@ -162,6 +162,59 @@ def test_config_get_validators_fail_bad_file(temp_dir):
         f"Error downloading config asset from file://{tf}: " +
         f"[Errno 2] No such file or directory: '{tf}'"))
 
+def test_config_get_validators_github():
+    # test against our existing validator config in gh
+    vals = get_validators(
+        repo_path='kbase/sample_service_validator_config',
+        repo_asset='metadata_validation.yml',
+        tag='0.7pre2',
+        prerelease_ok=True
+        )
+    assert len(vals.keys()) == 180
+    assert len(vals.prefix_keys()) == 0
+
+def test_config_get_validators_github_bad_repo():
+    with raises(Exception) as got:
+        vals = get_validators(
+            repo_path='kbase/sample_service_invalidator_config',
+            repo_asset='metadata_validation.yml',
+            tag='0.7pre2',
+            prerelease_ok=True
+            )
+    assert_exception_correct(
+        got.value, 
+        RuntimeError(f'Fetching releases from repo '+
+            '"kbase/sample_service_invalidator_config" failed.')
+        )
+
+def test_config_get_validators_github_bad_tag():
+    with raises(Exception) as got:
+        vals = get_validators(
+            repo_path='kbase/sample_service_validator_config',
+            repo_asset='metadata_validation.yml',
+            tag='tag_youre_it',
+            prerelease_ok=True
+            )
+    assert_exception_correct(
+        got.value, 
+        ValueError('No release with tag "tag_youre_it" found '+
+            'in validator config repo "kbase/sample_service_validator_config"')
+        )
+
+def test_config_get_validators_github_bad_asset():
+    with raises(Exception) as got:
+        vals = get_validators(
+            repo_path='kbase/sample_service_validator_config',
+            repo_asset='bad_asset.yml',
+            tag='0.6',
+            prerelease_ok=True
+            )
+    assert_exception_correct(
+        got.value, 
+        ValueError('No config asset "bad_asset.yml" found in validator config '+
+            'repo "kbase/sample_service_validator_config", release tag "0.6"')
+        )
+
 
 def test_config_get_validators_fail_bad_yaml(temp_dir):
     # calling str() on ValidationErrors returns more detailed into about the error

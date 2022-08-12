@@ -143,7 +143,7 @@ def build_samples(config: Dict[str, str]) -> Tuple[Samples, KBaseUserLookup, Lis
     if (metaval_url or metaval_repo):
         metaval = get_validators(
             repo_path=metaval_repo,
-            repo_file=metaval_filename,
+            repo_asset=metaval_filename,
             tag=metaval_release_tag,
             prerelease_ok=metaval_prelease_ok,
             url=metaval_url,
@@ -241,7 +241,7 @@ _META_VAL_JSONSCHEMA = {
 
 def get_validators(
     repo_path: Optional[str] = None, 
-    repo_file: Optional[str] = None, 
+    repo_asset: Optional[str] = None, 
     tag: Optional[str] = None,
     prerelease_ok: bool = False, 
     url: Optional[str] = None, 
@@ -250,10 +250,10 @@ def get_validators(
     '''
     Given a github repo or url pointing to a config file, initialize any metadata 
     validators present in the configuration. repo_path or url must be specified.
-    If a github repo is specified, pull config from the release asset repo_file.
+    If a github repo is specified, pull config from the release asset repo_asset.
 
     :param repo_path: github repo path (i.e. kbase/sample_service_validator_config)
-    :param repo_file: release asset filename containing validator config
+    :param repo_asset: release asset filename containing validator config
     :param tag: Tag specifying a specific release to load the config from (deafult is latest)
     :param prerelease_ok: If false, ignores pre-releases when pulling validators from github
     :param url: The URL for a config file for the metadata validators.
@@ -273,28 +273,28 @@ def get_validators(
                 repo = _Github(login_or_token=token).get_repo(repo_path)
                 releases = [rel for rel in repo.get_releases() if prerelease_ok or not rel.prerelease]
             except Exception as e:
-                raise RuntimeError(f'Fetching releases from repo {repo_path} failed.') from e
+                raise RuntimeError(f'Fetching releases from repo "{repo_path}" failed.') from e
 
             if not releases:
-                raise ValueError(f'No releases found in validator config repo {repo_path}')
+                raise ValueError(f'No releases found in validator config repo "{repo_path}"')
 
             if tag:
                 target_release = next((r for r in releases if r.tag_name==tag), None)
                 if not target_release:
-                    raise ValueError(f'No release with tag {tag} found in validator config repo {repo_path}')
+                    raise ValueError(f'No release with tag "{tag}" found in validator config repo "{repo_path}"')
             else:
                 # Use the latest release
                 target_release = releases[0]
 
             assets = target_release.get_assets()
             if not assets:
-                raise ValueError(f'No assets found in validator config repo {repo_path}, \
-                    release tag {target_release.tag_name}')
+                raise ValueError(f'No assets found in validator config repo "{repo_path}", '+
+                    f'release tag "{target_release.tag_name}"')
 
-            config_asset = next((a for a in assets if a.name==repo_file), None)
+            config_asset = next((a for a in assets if a.name==repo_asset), None)
             if not config_asset:
-                raise ValueError(f'No config asset "{repo_file}" found in validator config \
-                    repo {repo_path}, release tag {target_release.tag_name}')
+                raise ValueError(f'No config asset "{repo_asset}" found in validator config '+
+                    f'repo "{repo_path}", release tag "{target_release.tag_name}"')
 
             config_url = config_asset.url
 
@@ -307,15 +307,15 @@ def get_validators(
 
     except _URLError as e:
         if config_asset:
-            raise ValueError(f'Error downloading config asset from repo {repo_path} \
-                tag {tag} asset {config_asset.url}: {str(e.reason)}') from e
+            raise ValueError(f'Error downloading config asset from repo "{repo_path}" '+
+                f'tag "{tag}" asset "{config_asset.url}": {str(e.reason)}') from e
         else:
             raise ValueError(f'Error downloading config asset from {url}: {str(e.reason)}') from e
     except _ParserError as e:
         if config_asset:
             raise ValueError(
-                f'Failed to open validator configuration file from repo {repo_path} \
-                    tag {tag} asset {config_asset.url}: {str(e)}') from e
+                f'Failed to open validator configuration file from repo "{repo_path}" '+
+                    f'tag "{tag}" asset "{config_asset.url}": {str(e)}') from e
         else:
             raise ValueError(
                 f'Failed to open validator configuration file from {url}: {str(e)}') from e
