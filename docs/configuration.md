@@ -10,7 +10,7 @@ Setting `github-token` will help to avoid any rate limiting that may occur (1k/h
 
 The configuration repo should have chronological releases containing a configuration file. This file's name can be specified with `metadata-validator-config-filename` (`metadata_validation.yml` by default).
 
-The most recent release from the specified repo will be loaded. If pre-releases should also be included, set the `metadata-validator-config-prerelease` config variable to 'true'. 
+If `metadata-validator-config-release-tag` is provided, the config asset will be loaded from the associated release. Otherwise, the most recent release from the specified repo will be loaded. If pre-releases should also be included, set the `metadata-validator-config-prerelease` config variable to 'true'. 
 
 A direct file URL override can also be provided with the `metadata-validator-config-url` key. With this form, the url begins with `file://`, followed by a path to the directory containing the validation config file, which should be named `metadata_validation.yml` (unless overridden as described above.) This is utilized by tests.
 

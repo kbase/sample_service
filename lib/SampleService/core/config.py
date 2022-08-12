@@ -8,7 +8,7 @@ Configuration parsing and creation for the sample service.
 import importlib
 from typing import Dict, Optional, List, Tuple
 from typing import cast as _cast
-import urllib.request as request
+import urllib.request as _request
 from urllib.error import URLError as _URLError
 import yaml as _yaml
 from yaml.parser import ParserError as _ParserError
@@ -21,10 +21,12 @@ from SampleService.core.validator.metadata_validator import MetadataValidator as
 from SampleService.core.samples import Samples
 from SampleService.core.storage.arango_sample_storage import ArangoSampleStorage \
     as _ArangoSampleStorage
-from SampleService.core.arg_checkers import check_string as _check_string
+from SampleService.core.arg_checkers import check_string as _check_string, \
+    check_bool as _check_bool
 from SampleService.core.notification import KafkaNotifier as _KafkaNotifer
 from SampleService.core.user_lookup import KBaseUserLookup
 from SampleService.core.workspace import WS as _WS
+from SampleService.core.errors import MissingParameterError as _MissingParameterError
 
 from installed_clients.WorkspaceClient import Workspace as _Workspace
 
@@ -84,10 +86,17 @@ def build_samples(config: Dict[str, str]) -> Tuple[Samples, KBaseUserLookup, Lis
     metaval_filename = _check_string(config.get('metadata-validator-config-filename'),
                                 'config param metadata-validator-config-filename',
                                 optional=True)
-    
-    metaval_prelease_ok = _check_string(config.get('metadata-validator-config-prerelease'),
-                                'config param metadata-validator-config-prerelease',
+
+    if metaval_repo and not metaval_filename:
+        raise _MissingParameterError(metaval_filename)
+
+    metaval_release_tag = _check_string(config.get('metadata-validator-config-release-tag'),
+                                'config param metadata-validator-config-release-tag',
                                 optional=True)
+    
+    metaval_prelease_ok = _check_bool(config.get('metadata-validator-config-prerelease'),
+                                'config param metadata-validator-config-prerelease',
+                                optional=True) or False
 
     metaval_url = _check_string(config.get('metadata-validator-config-url'),
                                 'config param metadata-validator-config-url',
@@ -122,18 +131,26 @@ def build_samples(config: Dict[str, str]) -> Tuple[Samples, KBaseUserLookup, Lis
             workspace-read-admin-token: [REDACTED FOR YOUR ULTIMATE PLEASURE]
             kafka-bootstrap-servers: {kafka_servers}
             kafka-topic: {kafka_topic}
-            metadata-validators-config-repo: {metaval_repo}
-            metadata-validators-config-url: {metaval_url}
+            metadata-validator-config-repo: {metaval_repo}
+            metadata-validator-config-filename: {metaval_filename}
+            metadata-validator-config-prerelease: {metaval_prelease_ok}
+            metadata-validator-config-release-tag: {metaval_release_tag}
+            metadata-validator-config-url: {metaval_url}
+            github-token: [REDACTED]
     ''')
 
     # build the validators before trying to connect to arango
-    metaval = get_validators(
-        repo_path=metaval_repo,
-        repo_file=metaval_filename,
-        prerelease_ok= (metaval_prelease_ok or '').lower() in ('true', 'yes', 'y', '1'),
-        url=(metaval_url or None),
-        token=(github_token or None)) if (
-            metaval_url or metaval_repo) else MetadataValidatorSet()
+    if (metaval_url or metaval_repo):
+        metaval = get_validators(
+            repo_path=metaval_repo,
+            repo_file=metaval_filename,
+            tag=metaval_release_tag,
+            prerelease_ok=metaval_prelease_ok,
+            url=metaval_url,
+            token=github_token
+            )
+    else:
+        metaval = MetadataValidatorSet()
 
     arangoclient = _arango.ArangoClient(hosts=arango_url)
     arango_db = arangoclient.db(
@@ -222,12 +239,25 @@ _META_VAL_JSONSCHEMA = {
 }
 
 
-def get_validators(repo_path: Optional[str] = None, repo_file: Optional[str] = None, prerelease_ok: Optional[bool] = False, url: Optional[str] = None, token: Optional[str] = None) -> MetadataValidatorSet:
+def get_validators(
+    repo_path: Optional[str] = None, 
+    repo_file: Optional[str] = None, 
+    tag: Optional[str] = None,
+    prerelease_ok: bool = False, 
+    url: Optional[str] = None, 
+    token: Optional[str] = None
+    ) -> MetadataValidatorSet:
     '''
-    Given a url pointing to a config file, initialize any metadata validators present
-    in the configuration.
+    Given a github repo or url pointing to a config file, initialize any metadata 
+    validators present in the configuration. repo_path or url must be specified.
+    If a github repo is specified, pull config from the release asset repo_file.
 
+    :param repo_path: github repo path (i.e. kbase/sample_service_validator_config)
+    :param repo_file: release asset filename containing validator config
+    :param tag: Tag specifying a specific release to load the config from (deafult is latest)
+    :param prerelease_ok: If false, ignores pre-releases when pulling validators from github
     :param url: The URL for a config file for the metadata validators.
+    :param token: The token to be used when querying github
     :returns: A set of metadata validators.
     '''
     # TODO VALIDATOR make validator CLI
@@ -244,22 +274,35 @@ def get_validators(repo_path: Optional[str] = None, repo_file: Optional[str] = N
                 releases = [rel for rel in repo.get_releases() if prerelease_ok or not rel.prerelease]
             except Exception as e:
                 raise RuntimeError(f'Fetching releases from repo {repo_path} failed.') from e
+
             if not releases:
                 raise ValueError(f'No releases found in validator config repo {repo_path}')
-            latest_release = releases[0] # max(releases, key=lambda rel: rel.created_at)
-            assets = latest_release.get_assets()
+
+            if tag:
+                target_release = next((r for r in releases if r.tag_name==tag), None)
+                if not target_release:
+                    raise ValueError(f'No release with tag {tag} found in validator config repo {repo_path}')
+            else:
+                # Use the latest release
+                target_release = releases[0]
+
+            assets = target_release.get_assets()
             if not assets:
-                raise ValueError(f'No assets found in validator config repo {repo_path}')
+                raise ValueError(f'No assets found in validator config repo {repo_path}, \
+                    release tag {target_release.tag_name}')
+
             config_asset = next((a for a in assets if a.name==repo_file), None)
             if not config_asset:
-                raise ValueError(f'No config asset found in validator config repo {repo_path}')
+                raise ValueError(f'No config asset "{repo_file}" found in validator config \
+                    repo {repo_path}, release tag {target_release.tag_name}')
+
             config_url = config_asset.url
 
-        req = request.Request(config_url)
+        req = _request.Request(config_url)
         req.add_header('Accept', 'application/octet-stream')
         if token:
             req.add_header('Authorization', f'token {token}')
-        with request.urlopen(req) as response:
+        with _request.urlopen(req) as response:
             cfg = _yaml.safe_load(response)
 
     except _URLError as e:

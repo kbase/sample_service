@@ -107,6 +107,33 @@ def check_string(string: Optional[str], name: str, max_len: int = None, optional
         raise IllegalParameterError('{} exceeds maximum length of {}'.format(name, max_len))
     return string
 
+def check_bool(boolstring: Optional[str], name: str, optional: bool = False) -> Optional[bool]:
+    '''
+    Check and parse a boolean from an input string.
+    - Accepted true values (case insensitive):  'true', 'yes', 'y', '1'
+    - Accepted false values (case insensitive): 'false', 'no', 'n', '0'
+    - Raises if input is None or whitespace only (unless the optional parameter is specified)
+    - If optional, return None if input is None or whitespace only
+
+    :param boolstring: the string to parse/check as a boolean.
+    :param name: the name of the string to be used in error messages.
+    :returns: the parsed boolean
+    :raises MissingParameterError: if the string is None or whitespace only.
+    :raises IllegalParameterError: if the string is not one of the acceptable values.
+    '''
+    # See the IDMapping service if character classes are needed.
+    # Maybe package this stuff
+    if not boolstring or not boolstring.strip():
+        if optional:
+            return None
+        raise MissingParameterError(name)
+    boolstring = boolstring.strip().lower()
+    if boolstring in ('true', 'yes', 'y', '1'):
+        return True
+    elif boolstring in ('false', 'no', 'n', '0'):
+        return False
+    else:
+        raise IllegalParameterError('{} is an invalid value {}'.format(name, boolstring))
 
 def check_timestamp(timestamp: datetime.datetime, name: str):
     '''
