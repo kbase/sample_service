@@ -215,6 +215,38 @@ def test_config_get_validators_github_bad_asset():
             'repo "kbase/sample_service_validator_config", release tag "0.6"')
         )
 
+def test_config_get_validators_github_no_releases():
+    with raises(Exception) as got:
+        vals = get_validators(
+            repo_path='kbasetest/sample_validator_config_flow_no_releases',
+            repo_asset='mystery_asset.yml',
+            prerelease_ok=True
+            )
+    assert_exception_correct(
+        got.value, 
+        ValueError('No releases found in validator config repo '+
+            '"kbasetest/sample_validator_config_flow_no_releases"')
+        )
+
+def test_config_get_validators_no_url_or_repo():
+    with raises(Exception) as got:
+        vals = get_validators()
+    assert_exception_correct(
+        got.value, 
+        ValueError('No metadata validator config URL or repo path.')
+        )
+
+def test_config_get_validators_repo_no_asset_name():
+    with raises(Exception) as got:
+        vals = get_validators(
+            repo_path='kbasetest/sample_validator_config_flow_no_releases',
+            )
+    assert_exception_correct(
+        got.value, 
+        ValueError('No repo_asset name provided for repo '+
+            '"kbasetest/sample_validator_config_flow_no_releases"')
+        )
+
 
 def test_config_get_validators_fail_bad_yaml(temp_dir):
     # calling str() on ValidationErrors returns more detailed into about the error

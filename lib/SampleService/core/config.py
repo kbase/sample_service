@@ -269,6 +269,8 @@ def get_validators(
         elif not repo_path:
             raise ValueError(f'No metadata validator config URL or repo path.')
         else:
+            if not repo_asset:
+                raise ValueError(f'No repo_asset name provided for repo "{repo_path}"')
             try: 
                 repo = _Github(login_or_token=token).get_repo(repo_path)
                 releases = [rel for rel in repo.get_releases() if prerelease_ok or not rel.prerelease]
