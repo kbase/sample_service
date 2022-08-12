@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.6
+
 * add option to specify a repo and asset name for the validation config, rather than a url, which dowloads that asset via the github API
 
 ## 0.2.5

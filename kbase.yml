@@ -8,10 +8,10 @@ service-language:
     python
 
 module-version:
-    0.2.5
+    0.2.6
 
 owners:
-    [gaprice, slebras]
+    [gaprice, slebras, dlyon]
 
 service-config:
     dynamic-service: true
