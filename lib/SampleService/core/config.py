@@ -21,8 +21,10 @@ from SampleService.core.validator.metadata_validator import MetadataValidator as
 from SampleService.core.samples import Samples
 from SampleService.core.storage.arango_sample_storage import ArangoSampleStorage \
     as _ArangoSampleStorage
-from SampleService.core.arg_checkers import check_string as _check_string, \
+from SampleService.core.arg_checkers import (
+    check_string as _check_string,
     check_bool as _check_bool
+)
 from SampleService.core.notification import KafkaNotifier as _KafkaNotifer
 from SampleService.core.user_lookup import KBaseUserLookup
 from SampleService.core.workspace import WS as _WS
