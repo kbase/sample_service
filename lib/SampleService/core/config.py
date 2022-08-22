@@ -136,7 +136,7 @@ def build_samples(config: Dict[str, str]) -> Tuple[Samples, KBaseUserLookup, Lis
             metadata-validator-config-prerelease: {metaval_prelease_ok}
             metadata-validator-config-release-tag: {metaval_release_tag}
             metadata-validator-config-url: {metaval_url}
-            github-token: [REDACTED]
+            github-token: {'[REDACTED]' if github_token else None}
     ''')
 
     # build the validators before trying to connect to arango
