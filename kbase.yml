@@ -12,6 +12,3 @@ module-version:
 
 owners:
     [gaprice, slebras]
-
-service-config:
-    dynamic-service: true

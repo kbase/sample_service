@@ -30,7 +30,6 @@ compile:
 	kb-sdk compile $(SPEC_FILE) \
 		--out $(LIB_DIR) \
 		--pyclname $(SERVICE_CAPS).$(SERVICE_CAPS)Client \
-		--dynservver release \
 		--pyimplname $(SERVICE_CAPS).$(SERVICE_CAPS)Impl;
 	- rm $(LIB_DIR)/$(SERVICE_CAPS)Server.py
 
