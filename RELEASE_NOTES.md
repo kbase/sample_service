@@ -1,6 +1,8 @@
 # SampleService release notes
 
-## Unreleased
+## 0.2.6
+
+* Added jitpack build for Java client
 
 ## 0.2.5
 
