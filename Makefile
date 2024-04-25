@@ -36,7 +36,13 @@ compile:
 
 	kb-sdk compile $(SPEC_FILE) \
 		--out . \
-		--html \
+		--html
+	
+	kb-sdk compile $(SPEC_FILE) \
+		--out . \
+		--java \
+		--url https://ci.kbase.us/services/sampleservice \
+		--javasrc src/main/java
 
 test: test-sdkless coverage-reports
 
