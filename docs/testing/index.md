@@ -1,12 +1,6 @@
-# Setup and test
+# Testing
 
-The Sample Service requires ArangoDB 3.5.1+ with RocksDB as the storage engine.
-
-If Kafka notifications are enabled, the Sample Service requires Kafka 2.5.0+.
-
-To run tests, MongoDB 3.6+ and the KBase Jars file repo are also required. Kafka is always required to run tests.
-
-These dependencies will be installed (for macOS only), with `make test-setup`.
+Tests for the Sample Service are composed of mixed unit and integration tests and `mypy` type verification. Tests do not require configuration, but test running does have a few [host system prerequisites](./dependencies.md). The host machine running the tests should have a good amount of resources available (memory, cores), because the integration tests require running a half dozen  services. Some of these resources are run in docker containers, others are run directly on the host machine. All of them are automated and may be invoked via a single `make` task.
 
 From start to finish, this is what it takes to run tests:
 
@@ -15,12 +9,11 @@ make test-setup
 make test
 ```
 
-Please note that `test-setup` will look for required host application dependencies. If you are missing any of the dependencies listed below, you will need to install them with your favorite package manager:
+- [Quick Start](./quick-start.md)
+- [Test Dependencies](./dependencies.md)
+- [Running Required Services with Docker Compose](./testing-services-with-docker-compose.md)
+- [Test Coverage](./coverage.md)
+- [MyPy Type Verification](./mypy.md)
+- [Troubleshooting](./troubleshooting.md)
 
-- python 3.7
-- pipenv 
-- wget
-- java
-
-> Note: `kb-sdk test` does not currently pass.
-
+> Note: Although this service is based on [kb_sdk](https://github.com/kbase/kb_sdk), tests are not run by `kb-sdk`.
