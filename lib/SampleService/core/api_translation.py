@@ -481,7 +481,7 @@ def check_admin(
     return True
 
 
-def get_static_key_metadata_params(params: Dict[str, Any]) -> Tuple[List[str], Optional[bool]]:
+def get_static_key_metadata_params(params: Dict[str, Any]) -> Tuple[List[str], Optional[bool], bool]:
     '''
     Given a dict, extract the parameters to interrogate metadata key static metadata.
 
@@ -510,7 +510,8 @@ def get_static_key_metadata_params(params: Dict[str, Any]) -> Tuple[List[str], O
         pre = True
     else:
         raise _IllegalParameterError(f'Unexpected value for prefix: {prefix}')
-    return _cast(List[str], keys), pre
+    v = bool(params.get('verbose', False))
+    return _cast(List[str], keys), pre, v
 
 
 def create_data_link_params(params: Dict[str, Any]) -> Tuple[DataUnitID, SampleNodeAddress, bool]:
