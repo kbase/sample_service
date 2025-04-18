@@ -1,28 +1,33 @@
-name: non-sdk tests
+name: non-sdk sample services tests
 
 on:
-  push:
-    branches: [ master ]
   pull_request:
-    branches: [ master, develop ]
+    types:
+    - opened
+    - reopened
+    - synchronize
+    - ready_for_review
+  push:
+    # run workflow when merging to main or develop
+    branches:
+      - main
+      - master
+      - develop
   workflow_dispatch:
 
 jobs:
   non_sdk_tests:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.9.19]
-    steps:
 
+    steps:
       - name: Check out GitHub repo
         if: "!contains(github.event.head_commit.message, 'skip ci')"
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.9.19
 
       - name: Install pipenv
         run: pip install -r requirements.txt
