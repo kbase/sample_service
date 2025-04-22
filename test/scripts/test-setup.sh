@@ -157,7 +157,7 @@ install_kafka()
 
   export KAFKA_ARCHIVE="kafka_$SCALA_VER-$KAFKA_VER.tgz"
   curl -O "http://mirror.metrocast.net/apache/kafka/$KAFKA_VER/$KAFKA_ARCHIVE"
-  tar -xzf $KAFKA_ARCHIVE
+  tar -xf $KAFKA_ARCHIVE
   mv "kafka_$SCALA_VER-$KAFKA_VER" kafka
   mv kafka ..
   rm $KAFKA_ARCHIVE
