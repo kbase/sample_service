@@ -1,12 +1,15 @@
 # SampleService release notes
 
-## 0.2.6
+## 0.2.7
 
-* Added jitpack build for Java client
 * Added standard GitHub Actions workflows
 * Upgraded Python to version 3.9.19
 * Fixed failing unit tests and ensured all tests pass
 * Updated Kafka download link in test-setup.sh
+
+## 0.2.6
+
+* Added jitpack build for Java client
 
 ## 0.2.5
 
