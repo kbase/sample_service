@@ -58,7 +58,7 @@ ensure_host_dependencies()
 {
   ensure_dependency wget
   ensure_dependency java
-  ensure_dependency python 3.7
+  ensure_dependency python 3.9.19
   ensure_dependency pipenv
 }
 
@@ -156,7 +156,7 @@ install_kafka()
   cd test/bin/temp
 
   export KAFKA_ARCHIVE="kafka_$SCALA_VER-$KAFKA_VER.tgz"
-  curl -O "http://mirror.metrocast.net/apache/kafka/$KAFKA_VER/$KAFKA_ARCHIVE"
+  curl -O "https://archive.apache.org/dist/kafka/$KAFKA_VER/$KAFKA_ARCHIVE"
   tar -xzf $KAFKA_ARCHIVE
   mv "kafka_$SCALA_VER-$KAFKA_VER" kafka
   mv kafka ..

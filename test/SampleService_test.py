@@ -47,7 +47,7 @@ from kafka_controller import KafkaController
 # TODO should really test a start up for the case where the metadata validation config is not
 # supplied, but that's almost never going to be the case and the code is trivial, so YAGNI
 
-VER = '0.2.5'
+VER = '0.2.7'
 
 _AUTH_DB = 'test_auth_db'
 _WS_DB = 'test_ws_db'
@@ -418,7 +418,7 @@ def test_init_fail():
     # get_validators is tested elsewhere, just make sure it'll error out
     cfg['metadata-validator-config-url'] = 'https://kbase.us/services'
     init_fail(cfg, ValueError(
-        'Failed to open validator configuration file at https://kbase.us/services: Not Found'))
+        'Failed to open validator configuration file at https://kbase.us/services: Forbidden'))
 
 
 def init_fail(config, expected):

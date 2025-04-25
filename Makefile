@@ -44,13 +44,13 @@ compile:
 		--url https://ci.kbase.us/services/sampleservice \
 		--javasrc src/main/java
 
-test: test-sdkless coverage-reports
+test: test-sdkless
 
 test-sdkless:
 	# TODO flake8 and bandit
 	# TODO check tests run with kb-sdk test - will need to install mongo and update config
 	MYPYPATH=$(MAKEFILE_DIR)/$(LIB_DIR) pipenv run mypy --namespace-packages $(LIB_DIR)/$(SERVICE_CAPS)/core $(TEST_DIR)
-	PYTHONPATH=$(PYPATH) SAMPLESERV_TEST_FILE=$(TSTFL) pipenv run pytest --verbose --cov $(LIB_DIR)/$(SERVICE_CAPS) --cov-config=$(TEST_DIR)/coveragerc $(TEST_SPEC)
+	PYTHONPATH=$(PYPATH) SAMPLESERV_TEST_FILE=$(TSTFL) pipenv run pytest --verbose --cov $(LIB_DIR)/$(SERVICE_CAPS) --cov-report=term --cov-report=xml --cov-config=$(TEST_DIR)/coveragerc $(TEST_SPEC)
 	# to print test output immediately: --capture=tee-sys
 
 clean:
@@ -68,13 +68,3 @@ host-stop-dev-server:
 
 test-setup:
 	bash test/scripts/test-setup.sh
-
-coverage-reports:
-	@echo "Creating html coverage report"
-	pipenv run coverage html
-	@echo "Converting coverage to lcov"
-	pipenv run coverage lcov --data-file .coverage -o cov_profile.lcov
-
-coverage-summary:
-	@echo "Coverage summary:"
-	pipenv run coverage report

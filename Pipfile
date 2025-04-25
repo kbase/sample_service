@@ -4,8 +4,8 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-pytest = "==7.1.2"
-pytest-cov = "==3.0.0"
+pytest = "==7.4.0"
+pytest-cov = "==4.1.0"
 mypy = "==0.942"
 coveralls = "==3.3.1"
 flake8 = "==4.0.1"
@@ -27,14 +27,14 @@ pint = "==0.17"
 python-ranges = "==0.2.0"
 pygtrie = "==2.4.2"
 jinja2 = "==3.1.1"
-gevent = "==21.12.0"
+gevent = "==24.11.1"
 gunicorn = "==20.1.0"
 kafka-python = "==2.0.2"
-greenlet = "==1.1.2"
+greenlet = "==3.1.1"
 typing-extensions = "==4.2.0"
 types-pyyaml = "==6.0.7"
 types-requests = "==2.27.20"
 shell = "==1.0.1"
 
 [requires]
-python_version = "3.7"
+python_version = "3.9.19"
