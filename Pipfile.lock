@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "6e2ea3c760eac2f1e7bc914e36164af1ea014eeb54d55c5834aee7861c84d9f2"
+            "sha256": "b977d852ef2c8e36bf3594129e7a1c9e77a50764a1691b601f923c5fff0bcb2e"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -57,6 +57,22 @@
             ],
             "markers": "python_full_version >= '3.5.0'",
             "version": "==2.0.12"
+        },
+        "flexcache": {
+            "hashes": [
+                "sha256:18743bd5a0621bfe2cf8d519e4c3bfdf57a269c15d1ced3fb4b64e0ff4600656",
+                "sha256:d43c9fea82336af6e0115e308d9d33a185390b8346a017564611f1466dcd2e32"
+            ],
+            "markers": "python_version >= '3.9'",
+            "version": "==0.3"
+        },
+        "flexparser": {
+            "hashes": [
+                "sha256:266d98905595be2ccc5da964fe0a2c3526fbbffdc45b65b3146d75db992ef6b2",
+                "sha256:3738b456192dcb3e15620f324c447721023c0293f6af9955b481e91d00179846"
+            ],
+            "markers": "python_version >= '3.9'",
+            "version": "==0.4"
         },
         "gevent": {
             "hashes": [
@@ -316,12 +332,20 @@
         },
         "pint": {
             "hashes": [
-                "sha256:6593c5dfaf2f701c54f17453191dff05e90ec9ebc3d1901468a59cfcb3289a4c",
-                "sha256:f4d0caa713239e6847a7c6eefe2427358566451fe56497d533f21fb590a3f313"
+                "sha256:35275439b574837a6cd3020a5a4a73645eb125ce4152a73a2f126bf164b91b80",
+                "sha256:aa54926c8772159fcf65f82cc0d34de6768c151b32ad1deb0331291c38fe7659"
             ],
             "index": "pypi",
-            "markers": "python_version >= '3.6'",
-            "version": "==0.17"
+            "markers": "python_version >= '3.9'",
+            "version": "==0.24.4"
+        },
+        "platformdirs": {
+            "hashes": [
+                "sha256:a03875334331946f13c549dbd8f4bac7a13a50a895a0eb1e8c6a8ace80d40a94",
+                "sha256:eb437d586b6a0986388f0d6f74aa0cde27b48d0e3d66843640bfb6bdcdb6e351"
+            ],
+            "markers": "python_version >= '3.9'",
+            "version": "==4.3.7"
         },
         "pygtrie": {
             "hashes": [
