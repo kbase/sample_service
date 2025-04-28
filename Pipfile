@@ -32,7 +32,7 @@ kafka-python = "==2.0.2"
 greenlet = "==3.1.1"
 typing-extensions = "==4.2.0"
 types-pyyaml = "==6.0.7"
-types-requests = "==2.27.20"
+types-requests = "==2.31.0.6"
 shell = "==1.0.1"
 
 [requires]
