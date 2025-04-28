@@ -6,7 +6,7 @@ verify_ssl = true
 [dev-packages]
 pytest = "==7.4.0"
 pytest-cov = "==4.1.0"
-mypy = "==0.942"
+mypy = "==1.10.1"
 coveralls = "==3.3.1"
 flake8 = "==4.0.1"
 semver = "==2.13.0"
