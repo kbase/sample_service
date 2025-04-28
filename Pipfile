@@ -9,7 +9,7 @@ pytest-cov = "==4.1.0"
 mypy = "==0.942"
 coveralls = "==3.3.1"
 flake8 = "==4.0.1"
-semver = "==2.13.0"
+semver = "==3.0.4"
 pymongo = "==4.1.1"
 
 [packages]
