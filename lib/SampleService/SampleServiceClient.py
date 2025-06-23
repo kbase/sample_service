@@ -23,17 +23,15 @@ class SampleService(object):
             self, url=None, timeout=30 * 60, user_id=None,
             password=None, token=None, ignore_authrc=False,
             trust_all_ssl_certificates=False,
-            auth_svc='https://ci.kbase.us/services/auth/api/legacy/KBase/Sessions/Login',
-            service_ver='release'):
+            auth_svc='https://ci.kbase.us/services/auth/api/legacy/KBase/Sessions/Login'):
         if url is None:
             raise ValueError('A url is required')
-        self._service_ver = service_ver
+        self._service_ver = None
         self._client = _BaseClient(
             url, timeout=timeout, user_id=user_id, password=password,
             token=token, ignore_authrc=ignore_authrc,
             trust_all_ssl_certificates=trust_all_ssl_certificates,
-            auth_svc=auth_svc,
-            lookup_url=True)
+            auth_svc=auth_svc)
 
     def create_sample(self, params, context=None):
         """
