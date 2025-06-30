@@ -197,7 +197,7 @@ Contributions to this repo roughly follow gitflow:
 - create a Pull Request against develop from this feature branch
 - the PR then enters a review/change cycle until the review is complete
 - when complete, the PR is merged into the develop branch 
-- when a release is called for, the develop branch is merged into master, a release is created off of master.
+- when a release is called for, the develop branch is merged into master, a release is created off of master
 
 ## License
 
