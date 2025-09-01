@@ -1,4 +1,4 @@
-FROM python:3.9.19
+FROM python:3.13.7
 LABEL org.opencontainers.image.authors="KBase Developer"
 
 # Install dockerize. It is not available through package managers.
